@@ -1,8 +1,6 @@
 use reqwest;
 
 
-
-
 pub fn get(url : &str, project_ket: &str) -> reqwest::blocking::Response {
     let client = reqwest::blocking::Client::new();
     let res = client.get(url)

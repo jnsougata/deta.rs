@@ -13,6 +13,10 @@ impl Deta {
             project_key: self.project_key.clone(),
         }
     }
+
+    pub fn drive() {
+        // not implemented
+    }
 }
 
 
