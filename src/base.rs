@@ -1,4 +1,4 @@
-use crate::https::*;
+use reqwest;
 
 #[derive(Default, Clone, Debug)]
 pub struct Record {
@@ -117,7 +117,11 @@ impl Base {
 
     pub fn get(&self, key: &str) -> (u16, serde_json::Value) {
         let url = format!("{}/{}/{}/items/{}", BASE_URL, self.project_id, self.name, key);
-        let res = get(&url, &self.project_key);
+        let res = reqwest::blocking::Client::new()
+            .get(&url)
+            .header("X-API-Key", &self.project_key)
+            .send()
+            .unwrap();
         return (res.status().as_u16(), res.json::<serde_json::Value>().unwrap());
     }
 
@@ -129,7 +133,12 @@ impl Base {
             items.push(record.json());
         }
         data.insert("items".to_string(), serde_json::json!(items));
-        let res = put(&url, &self.project_key, serde_json::json!(data));
+        let res = reqwest::blocking::Client::new()
+            .put(&url)
+            .header("X-API-Key", &self.project_key)
+            .json(&serde_json::json!(data))
+            .send()
+            .unwrap();
         return (res.status().as_u16(), res.json::<serde_json::Value>().unwrap());
     }
 
@@ -137,25 +146,46 @@ impl Base {
         let url = format!("{}/{}/{}/items", BASE_URL, self.project_id, self.name);
         let mut data = serde_json::Map::new();
         data.insert("item".to_string(), serde_json::json!(record.json()));
-        let res = post(&url, &self.project_key, serde_json::json!(data));
+        let res = reqwest::blocking::Client::new()
+            .post(&url)
+            .header("X-API-Key", &self.project_key)
+            .json(&serde_json::json!(data))
+            .send()
+            .unwrap();
         return (res.status().as_u16(), res.json::<serde_json::Value>().unwrap());
     }
 
     pub fn delete(&self, key: &str) -> (u16, serde_json::Value) {
         let url = format!("{}/{}/{}/items/{}", BASE_URL, self.project_id, self.name, key);
-        let res = delete(&url, &self.project_key);
+        //let res = delete(&url, &self.project_key);
+        let res = reqwest::blocking::Client::new()
+            .delete(&url)
+            .header("X-API-Key", &self.project_key)
+            .send()
+            .unwrap();
         return (res.status().as_u16(), res.json::<serde_json::Value>().unwrap());
     }
 
     pub fn update(&self, updater: Updater) -> (u16, serde_json::Value) {
         let url = format!("{}/{}/{}/items/{}", BASE_URL, self.project_id, self.name, updater.key);
-        let res = patch(&url, &self.project_key, updater.json());
+        let res = reqwest::blocking::Client::new()
+            .patch(&url)
+            .header("X-API-Key", &self.project_key)
+            .json(&updater.json())
+            .send()
+            .unwrap();
         return (res.status().as_u16(), res.json::<serde_json::Value>().unwrap());
     }
 
     pub fn query(&self, query: Query) -> (u16, serde_json::Value) {
         let url = format!("{}/{}/{}/query", BASE_URL, self.project_id, self.name);
-        let res = post(&url, &self.project_key, query.json());
+        //let res = post(&url, &self.project_key, query.json());
+        let res = reqwest::blocking::Client::new()
+            .post(&url)
+            .header("X-API-Key", &self.project_key)
+            .json(&query.json())
+            .send()
+            .unwrap();
         return (res.status().as_u16(), res.json::<serde_json::Value>().unwrap());
     }
 
