@@ -1,10 +1,10 @@
 use reqwest;
 
 
-pub fn get(url : &str, project_ket: &str) -> reqwest::blocking::Response {
+pub fn get(url : &str, project_key: &str) -> reqwest::blocking::Response {
     let client = reqwest::blocking::Client::new();
     let res = client.get(url)
-        .header("X-API-Key", project_ket)
+        .header("X-API-Key", project_key)
         .header("Content-Type", "application/json")
         .send()
         .unwrap();

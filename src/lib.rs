@@ -1,5 +1,6 @@
 mod https;
 pub mod base;
+pub mod drive;
 
 
 pub struct Deta {
@@ -8,6 +9,7 @@ pub struct Deta {
 }
 
 impl Deta {
+    
     pub fn base(&self, name: &str) -> base::Base {
         base::Base {
             name: name.to_string(),
@@ -16,8 +18,12 @@ impl Deta {
         }
     }
 
-    pub fn drive() {
-        // not implemented
+    pub fn drive(&self, name: &str) -> drive::Drive{
+        drive::Drive {
+            name: name.to_string(),
+            project_id: self.project_id.clone(),
+            project_key: self.project_key.clone(),
+        }
     }
 }
 
