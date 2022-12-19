@@ -1,5 +1,6 @@
 use crate::https::*;
 
+#[derive(Default, Clone, Debug)]
 pub struct Record {
     pub key: Option<String>,
     pub value: serde_json::Value,
@@ -21,41 +22,68 @@ impl Record {
         }
         return serde_json::json!(data);
     }
-}
-
-pub struct Updater {
-    pub key: String,
-    pub set: Option<serde_json::Value>,
-    pub delete: Option<Vec<String>>,
-    pub append: Option<serde_json::Value>,
-    pub prepend: Option<serde_json::Value>,
-    pub increment: Option<serde_json::Value>,
-}
-
-impl Updater {
-    fn json(&self) -> serde_json::Value {
-        let mut data = serde_json::Map::new();
-        if let Some(set) = &self.set {
-            data.insert("set".to_string(), set.clone());
+    pub fn copy(&self) -> Record {
+        return Record {
+            key: self.key.clone(),
+            value: self.value.clone(),
+            expires_in: self.expires_in.clone(),
+            expires_at: self.expires_at.clone(),
         }
-        if let Some(delete) = &self.delete {
-            data.insert("delete".to_string(), serde_json::json!(delete));
-        }
-        if let Some(append) = &self.append {
-            data.insert("append".to_string(), append.clone());
-        }
-        if let Some(prepend) = &self.prepend {
-            data.insert("prepend".to_string(), prepend.clone());
-        }
-        if let Some(increment) = &self.increment {
-            data.insert("increment".to_string(), increment.clone());
-        }
-        return serde_json::json!(data);
     }
 }
 
+#[derive(Default, Clone, Debug)]
+pub struct Updater {
+    pub key: String,
+    updates: serde_json::Value,
+}
+
+impl Updater {
+
+    pub fn new(key: &str) -> Updater {
+        return Updater {
+            key: key.to_string(),
+            updates: serde_json::json!({
+                "set": {},
+                "delete": [],
+                "append": {},
+                "prepend": {},
+                "increment": {},
+            }),
+        }
+    }
+    
+    pub fn set(&mut self, field: &str, value: serde_json::Value) {
+        self.updates["set"][field] = value;
+    }
+
+    pub fn delete(&mut self, fields: Vec<&str>) {
+        for field in fields {
+            self.updates["delete"].as_array_mut().unwrap().push(serde_json::json!(field));
+        }
+    }
+
+    pub fn append(&mut self, field: &str, value: serde_json::Value) {
+        self.updates["append"][field] = value;
+    }
+
+    pub fn prepend(&mut self, field: &str, value: serde_json::Value) {
+        self.updates["prepend"][field] = value;
+    }
+
+    pub fn increment(&mut self, field: &str, value: i64) {
+        self.updates["increment"][field] = serde_json::json!(value);
+    }
+
+    fn json(&self) -> serde_json::Value {
+        return self.updates.clone();
+    }
+    
+}
+
+#[derive(Default, Clone, Debug)]
 pub struct Query {
-    pub payload: Option<serde_json::Value>,
+    pub payload: Option<Vec<serde_json::Value>>,
     pub limit: Option<i64>,
     pub last: Option<String>,
 }
@@ -64,7 +92,7 @@ impl Query {
     pub fn json(&self) -> serde_json::Value {
         let mut data = serde_json::Map::new();
         if let Some(payload) = &self.payload {
-            data.insert("query".to_string(), payload.clone());
+            data.insert("query".to_string(), serde_json::json!(payload));
         }
         if let Some(limit) = &self.limit {
             data.insert("limit".to_string(), serde_json::json!(limit));
@@ -87,10 +115,10 @@ const BASE_URL: &str = "https://database.deta.sh/v1";
 
 impl Base {
 
-    pub fn get(&self, key: &str) -> serde_json::Value {
+    pub fn get(&self, key: &str) -> (u16, serde_json::Value) {
         let url = format!("{}/{}/{}/items/{}", BASE_URL, self.project_id, self.name, key);
         let res = get(&url, &self.project_key);
-        res.json::<serde_json::Value>().unwrap()
+        return (res.status().as_u16(), res.json::<serde_json::Value>().unwrap());
     }
 
     pub fn put(&self, records: Vec<Record>) -> (u16, serde_json::Value) {
@@ -130,5 +158,5 @@ impl Base {
         let res = post(&url, &self.project_key, query.json());
         return (res.status().as_u16(), res.json::<serde_json::Value>().unwrap());
     }
-    
+
 }
