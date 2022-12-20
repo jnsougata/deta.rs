@@ -27,7 +27,7 @@ impl Drive {
         prefix: Option<&str>,
         limit: Option<i32>,
         last: Option<String>,
-    ) -> (u16, Value) {
+    ) -> Result<Value, reqwest::Error> {
         let mut url = format!("{}/{}/{}/files?", DRIVE_URL, self.project_id, self.name);
         if let Some(limit) = limit {
             url.push_str(&format!("limit={}", limit));
@@ -47,10 +47,10 @@ impl Drive {
             .header("Content-Type", "application/json")
             .send()
             .unwrap();
-        return (resp.status().as_u16(), resp.json::<Value>().unwrap());
+        resp.json::<Value>()
     }
     
-    pub fn get(&self, filename: &str) -> (u16, Vec<u8>) {
+    pub fn get(&self, filename: &str) -> Result<Value, reqwest::Error> {
         let url = format!("{}/{}/{}/files/download?name={}", DRIVE_URL, self.project_id, self.name, filename);
         let client = reqwest::blocking::Client::new();
         let resp = client
@@ -58,10 +58,10 @@ impl Drive {
             .header("X-Api-Key", &self.project_key)
             .header("Content-Type", "application/json")
             .send().unwrap();
-        return (resp.status().as_u16(), resp.bytes().unwrap().to_vec());
+        resp.json::<Value>()
     }
 
-    pub fn put<'a >(&self, save_as: &str, content: &'a [u8]) -> (u16, Value) {
+    pub fn put<'a >(&self, save_as: &str, content: &'a [u8]) -> Result<Value, reqwest::Error> {
         if content.len() <= 10 * 1024 * 1024 {
             let url = format!("{}/{}/{}/files?name={}", DRIVE_URL, self.project_id, self.name, save_as);
             let client = reqwest::blocking::Client::new();
@@ -72,7 +72,7 @@ impl Drive {
                 .header("name", save_as)
                 .body(content.to_owned())
                 .send().unwrap();
-            return (resp.status().as_u16(), resp.json::<Value>().unwrap());
+            return resp.json::<Value>();
         } else {
             const CHUNK_SIZE: usize = 10 * 1024 * 1024;
             let chunks = content.chunks(CHUNK_SIZE);
@@ -117,7 +117,7 @@ impl Drive {
                     .header("X-Api-Key", &self.project_key)
                     .header("Content-Type", "application/json")
                     .send().unwrap();
-                return (complete_resp.status().as_u16(), complete_resp.json::<Value>().unwrap());
+                return complete_resp.json::<Value>();
             } else {
                 let abort_url = format!(
                     "{}/{}/{}/uploads/{}?name={}", 
@@ -129,12 +129,12 @@ impl Drive {
                     .header("X-Api-Key", &self.project_key)
                     .header("Content-Type", "application/json")
                     .send().unwrap();
-                return (abort_resp.status().as_u16(), abort_resp.json::<Value>().unwrap());
+                return abort_resp.json::<Value>();
             }
         }
     }
 
-    pub fn delete(&self, names: Vec<&str>) -> (u16, Value) {
+    pub fn delete(&self, names: Vec<&str>) -> Result<Value, reqwest::Error> {
         let url = format!("{}/{}/{}/files", DRIVE_URL, self.project_id, self.name);
         let payload = json!({"names": names});
         let client = reqwest::blocking::Client::new();
@@ -144,7 +144,7 @@ impl Drive {
             .header("Content-Type", "application/json")
             .body(payload.to_string())
             .send().unwrap();
-        return (resp.status().as_u16(), resp.json::<Value>().unwrap());
+        resp.json::<Value>()
     }
     
 }

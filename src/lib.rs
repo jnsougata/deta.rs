@@ -13,6 +13,7 @@
 //! ```
 
 pub mod base;
+pub mod utils;
 pub mod drive;
 
 
@@ -38,10 +39,12 @@ impl Deta {
             project_key: self.project_key.clone(),
         }
     }
-}
 
-pub fn new(project_key: &str) -> Deta {
-    let project_key = project_key;
-    let project_id = project_key.split("_").collect::<Vec<&str>>()[0].to_string();
-    Deta { project_key: project_key.to_string(), project_id }
+    pub fn new(project_key: &str) -> Deta {
+        let project_id = project_key.split("_").collect::<Vec<&str>>()[0];
+        Deta { 
+            project_key: project_key.to_string(), 
+            project_id: project_id.to_string()
+        }
+    }
 }
