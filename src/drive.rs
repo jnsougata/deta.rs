@@ -1,3 +1,17 @@
+use serde_json::{json, Value};
+
+
+/// Drive is the struct that represents a Deta Drive.
+/// ## Methods
+/// #### `list(prefix, limit, last)`
+/// Gets a list of files in the drive.
+/// #### `get(filename)`
+/// Gets a file from the drive. Returns a tuple of the status code and the file contents.
+/// #### `put(save_as, content)`
+/// Puts a file in the drive. Returns a tuple of the status code and the response.
+/// #### `delete(names)`
+/// Deletes file(s) from the drive. Returns a tuple of the status code and the response.
+
 pub struct Drive {
     pub name: String,
     pub project_id: String,
@@ -13,7 +27,7 @@ impl Drive {
         prefix: Option<&str>,
         limit: Option<i32>,
         last: Option<String>,
-    ) -> (u16, serde_json::Value) {
+    ) -> (u16, Value) {
         let mut url = format!("{}/{}/{}/files?", DRIVE_URL, self.project_id, self.name);
         if let Some(limit) = limit {
             url.push_str(&format!("limit={}", limit));
@@ -33,7 +47,7 @@ impl Drive {
             .header("Content-Type", "application/json")
             .send()
             .unwrap();
-        return (resp.status().as_u16(), resp.json::<serde_json::Value>().unwrap());
+        return (resp.status().as_u16(), resp.json::<Value>().unwrap());
     }
     
     pub fn get(&self, filename: &str) -> (u16, Vec<u8>) {
@@ -47,7 +61,7 @@ impl Drive {
         return (resp.status().as_u16(), resp.bytes().unwrap().to_vec());
     }
 
-    pub fn put<'a >(&self, save_as: &str, content: &'a [u8]) -> (u16, serde_json::Value) {
+    pub fn put<'a >(&self, save_as: &str, content: &'a [u8]) -> (u16, Value) {
         if content.len() <= 10 * 1024 * 1024 {
             let url = format!("{}/{}/{}/files?name={}", DRIVE_URL, self.project_id, self.name, save_as);
             let client = reqwest::blocking::Client::new();
@@ -58,7 +72,7 @@ impl Drive {
                 .header("name", save_as)
                 .body(content.to_owned())
                 .send().unwrap();
-            return (resp.status().as_u16(), resp.json::<serde_json::Value>().unwrap());
+            return (resp.status().as_u16(), resp.json::<Value>().unwrap());
         } else {
             const CHUNK_SIZE: usize = 10 * 1024 * 1024;
             let chunks = content.chunks(CHUNK_SIZE);
@@ -73,7 +87,7 @@ impl Drive {
                 .header("Content-Type", "application/octet-stream")
                 .header("name", save_as)
                 .send().unwrap();
-            let init_data = init_resp.json::<serde_json::Value>().unwrap();
+            let init_data = init_resp.json::<Value>().unwrap();
             let upload_id = init_data["upload_id"].to_string().replace("\"", "");
             let file_name = init_data["name"].to_string().replace("\"", "");
             let mut done = vec![];
@@ -103,7 +117,7 @@ impl Drive {
                     .header("X-Api-Key", &self.project_key)
                     .header("Content-Type", "application/json")
                     .send().unwrap();
-                return (complete_resp.status().as_u16(), complete_resp.json::<serde_json::Value>().unwrap());
+                return (complete_resp.status().as_u16(), complete_resp.json::<Value>().unwrap());
             } else {
                 let abort_url = format!(
                     "{}/{}/{}/uploads/{}?name={}", 
@@ -115,16 +129,14 @@ impl Drive {
                     .header("X-Api-Key", &self.project_key)
                     .header("Content-Type", "application/json")
                     .send().unwrap();
-                return (abort_resp.status().as_u16(), abort_resp.json::<serde_json::Value>().unwrap());
+                return (abort_resp.status().as_u16(), abort_resp.json::<Value>().unwrap());
             }
         }
     }
 
-    pub fn delete(&self, names: Vec<&str>) -> (u16, serde_json::Value) {
+    pub fn delete(&self, names: Vec<&str>) -> (u16, Value) {
         let url = format!("{}/{}/{}/files", DRIVE_URL, self.project_id, self.name);
-        let payload = serde_json::json!({
-            "names": names
-        });
+        let payload = json!({"names": names});
         let client = reqwest::blocking::Client::new();
         let resp = client
             .delete(&url)
@@ -132,7 +144,7 @@ impl Drive {
             .header("Content-Type", "application/json")
             .body(payload.to_string())
             .send().unwrap();
-        return (resp.status().as_u16(), resp.json::<serde_json::Value>().unwrap());
+        return (resp.status().as_u16(), resp.json::<Value>().unwrap());
     }
     
 }
