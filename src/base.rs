@@ -81,7 +81,7 @@ impl Base {
         res.json::<Value>()
     }
 
-    pub fn update(&self, updater: Updater) -> Result<Value, reqwest::Error> {
+    pub fn update(&self, updater: UpdateBuilder) -> Result<Value, reqwest::Error> {
         let url = format!("{}/{}/{}/items/{}", BASE_URL, self.project_id, self.name, updater.key);
         let res = reqwest::blocking::Client::new()
             .patch(&url)

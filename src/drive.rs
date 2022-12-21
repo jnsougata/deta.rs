@@ -50,7 +50,7 @@ impl Drive {
         resp.json::<Value>()
     }
     
-    pub fn get(&self, filename: &str) -> Result<Value, reqwest::Error> {
+    pub fn get(&self, filename: &str) -> Result<Vec<u8>, reqwest::Error> {
         let url = format!("{}/{}/{}/files/download?name={}", DRIVE_URL, self.project_id, self.name, filename);
         let client = reqwest::blocking::Client::new();
         let resp = client
@@ -58,7 +58,7 @@ impl Drive {
             .header("X-Api-Key", &self.project_key)
             .header("Content-Type", "application/json")
             .send().unwrap();
-        resp.json::<Value>()
+        Result::Ok(resp.bytes().unwrap().to_vec())
     }
 
     pub fn put<'a >(&self, save_as: &str, content: &'a [u8]) -> Result<Value, reqwest::Error> {

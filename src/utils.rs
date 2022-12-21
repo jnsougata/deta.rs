@@ -72,7 +72,7 @@ impl Record {
     }
 }
 
-/// Updater represents a struct that can be used to update a record in a Deta Base.
+/// UpdateBuilder represents a struct that can be used to update a record in a Deta Base.
 /// ## Fields
 /// #### `key` (Required)
 /// The key of the record to update.
@@ -102,15 +102,15 @@ impl Record {
 /// ```
 
 #[derive(Default, Clone, Debug)]
-pub struct Updater {
+pub struct UpdateBuilder {
     pub key: String,
     updates: Value,
 }
 
-impl Updater {
+impl UpdateBuilder {
 
-    pub fn new(key: &str) -> Updater {
-        return Updater {
+    pub fn new(key: &str) -> UpdateBuilder {
+        return UpdateBuilder {
             key: key.to_string(),
             updates: json!({
                 "set": {},
@@ -187,6 +187,8 @@ impl Updater {
 /// Adds a condition to the query that the field must start with the specified value.
 /// #### `range(field, start, end)`
 /// Adds a condition to the query that the field must be between the specified start and end values.
+/// #### `do_or(another)`
+/// Do an OR query with the specified query.
 /// ## Example
 /// ```rs
 /// use deta_rs::utils::Query;
@@ -201,72 +203,87 @@ impl Updater {
 
 #[derive(Default, Clone, Debug)]
 pub struct QueryBuilder {
-    pub payload: Option<Vec<Value>>,
+    pub map: Option<Map<String, Value>>,
     pub limit: Option<i64>,
     pub last: Option<String>,
+    ors : Option<Vec<Map<String, Value>>>,
 }
 
 impl QueryBuilder {
 
     pub fn new() -> QueryBuilder {
         return QueryBuilder {
-            payload: Some(Vec::new()),
+            map: Some(Map::new()),
             limit: Some(1000),
             last: None,
+            ors: Some(Vec::new()),
         };
     }
 
+    pub fn do_or(&mut self, another: QueryBuilder) {
+        self.ors.as_mut().unwrap().push(another.map.unwrap());
+    }
+
     pub fn equals(&mut self, field: &str, value: Value) {
-        self.payload.as_mut().unwrap().push(json!({field: value}));
+        self.map.as_mut().unwrap().insert(field.to_string(), value);
     }
 
     pub fn not_equals(&mut self, field: &str, value: Value) {
-        self.payload.as_mut().unwrap().push(json!({format!("{}?ne", field): value}));
+        self.map.as_mut().unwrap().insert(format!("{}?ne", field), value);
     }
 
     pub fn greater_than(&mut self, field: &str, value: Value) {
-        self.payload.as_mut().unwrap().push(json!({format!("{}?gt", field): value}));
+        self.map.as_mut().unwrap().insert(format!("{}?gt", field), value);
     }
 
     pub fn greater_than_or_equal(&mut self, field: &str, value: Value) {
-        self.payload.as_mut().unwrap().push(json!({format!("{}?gte", field): value}));
+        self.map.as_mut().unwrap().insert(format!("{}?gte", field), value);
     }
 
     pub fn less_than(&mut self, field: &str, value: Value) {
-        self.payload.as_mut().unwrap().push(json!({format!("{}?lt", field): value}));
+        self.map.as_mut().unwrap().insert(format!("{}?lt", field), value);
     }
 
     pub fn less_than_or_equal(&mut self, field: &str, value: Value) {
-        self.payload.as_mut().unwrap().push(json!({format!("{}?lte", field): value}));
+        self.map.as_mut().unwrap().insert(format!("{}?lte", field), value);
     }
 
     pub fn prefix(&mut self, field: &str, value: &str) {
-        self.payload.as_mut().unwrap().push(json!({format!("{}?pfx", field): value}));
+        self.map.as_mut().unwrap().insert(format!("{}?pfx", field), json!(value));
     }
 
     pub fn contains(&mut self, field: &str, value: &str) {
-        self.payload.as_mut().unwrap().push(json!({format!("{}?contains", field): value}));
+        self.map.as_mut().unwrap().insert(format!("{}?contains", field), json!(value));
     }
 
     pub fn range(&mut self, field: &str, start: f64, end: f64) {
-        self.payload.as_mut().unwrap().push(json!({format!("{}?range", field): [start, end]}));
+        self.map.as_mut().unwrap().insert(format!("{}?range", field), json!([start, end]));
     }
 
     pub fn not_contains(&mut self, field: &str, value: &str) {
-        self.payload.as_mut().unwrap().push(json!({format!("{}?not_contains", field): value}));
+        self.map.as_mut().unwrap().insert(format!("{}?not_contains", field), json!(value));
     }
 
     pub fn json(&self) -> Value {
         let mut data = Map::new();
-        if let Some(payload) = &self.payload {
-            data.insert("query".to_string(), json!(payload));
-        }
         if let Some(limit) = &self.limit {
             data.insert("limit".to_string(), json!(limit));
         }
         if let Some(last) = &self.last {
             data.insert("last".to_string(), json!(last));
         }
-        return json!(data);
+        let mut temp = vec![];
+        if let Some(ors) = &self.ors {
+            for or in ors {
+                temp.push(json!(or));
+            }
+            if let Some(map) = &self.map {
+                temp.push(json!(map));
+            }
+        } else {
+            temp.push(json!(self.map.as_ref().unwrap()));
+        }
+        data.insert("query".to_string(), json!(temp));
+        json!(data)
     }
 }
