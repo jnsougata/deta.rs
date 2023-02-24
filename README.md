@@ -1,4 +1,4 @@
-# deta_rs
+# Deta Rust
 Rust bindings for the Deta [Base](https://docs.deta.sh/docs/base/http) and [Drive](https://docs.deta.sh/docs/drive/http) HTTP API
 
 ## Usage
