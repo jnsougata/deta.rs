@@ -1,13 +1,31 @@
 # Deta Rust
 Rust bindings for the Deta [Base](https://docs.deta.sh/docs/base/http) and [Drive](https://docs.deta.sh/docs/drive/http) HTTP API
 
+Forked from <https://github.com/jnsougata/deta-rust>.
+
+## Differences from upstream
+
+This fork currently implements two changes compared to upstream as of `344396b`:
+
+1. `reqwest` is replaced by `ureq` (using `rustls` for a 100% Rust
+   implementation with no sys-dependencies)
+1. `Deta` now implements `Clone`
+
+The former was done in an attempt to make the project build on Deta. At the time
+of writing, building Rust binaries on Deta does not work, but the change has
+been left in to make it easier to build the package without needing
+`openssl-sys` or `pkg-config`.
+
+`Clone` is implemented as it makes it easier to use the `Deta` struct in an app
+state for use in eg. an `axum` app.
+
 ## Usage
 
 Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-deta_rs = { git = "https://github.com/jnsougata/deta-rust"}
+deta_rs = { git = "https://github.com/wonderfulspam/deta-rust"}
 ```
 
 ## Quickstart
