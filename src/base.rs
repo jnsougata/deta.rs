@@ -50,7 +50,7 @@ impl Base {
         data.insert("items".to_string(), json!(items));
         let res = ureq::put(&url)
             .set("X-API-Key", &self.project_key)
-            .send_json(&json!(data))
+            .send_json(json!(data))
             .unwrap();
         res.into_json::<Value>()
     }
@@ -61,7 +61,7 @@ impl Base {
         data.insert("item".to_string(), json!(record.json()));
         let res = ureq::post(&url)
             .set("X-API-Key", &self.project_key)
-            .send_json(&json!(data))
+            .send_json(json!(data))
             .unwrap();
         res.into_json::<Value>()
     }
@@ -85,7 +85,7 @@ impl Base {
         );
         let res = ureq::patch(&url)
             .set("X-API-Key", &self.project_key)
-            .send_json(&updater.json())
+            .send_json(updater.json())
             .unwrap();
         res.into_json::<Value>()
     }
@@ -94,7 +94,7 @@ impl Base {
         let url = format!("{}/{}/{}/query", BASE_URL, self.project_id, self.name);
         let res = ureq::post(&url)
             .set("X-API-Key", &self.project_key)
-            .send_json(&query.json())
+            .send_json(query.json())
             .unwrap();
         res.into_json::<Value>()
     }

@@ -59,15 +59,15 @@ impl Record {
         } else if let Some(expires_at) = &self.expires_at {
             data.insert("__expires".to_string(), json!(expires_at.timestamp()));
         }
-        return json!(data);
+        json!(data)
     }
 
     pub fn copy(&self) -> Record {
-        return Record {
+        Record {
             key: self.key.clone(),
             value: self.value.clone(),
-            expires_in: self.expires_in.clone(),
-            expires_at: self.expires_at.clone(),
+            expires_in: self.expires_in,
+            expires_at: self.expires_at,
         }
     }
 }
@@ -110,7 +110,7 @@ pub struct UpdateBuilder {
 impl UpdateBuilder {
 
     pub fn new(key: &str) -> UpdateBuilder {
-        return UpdateBuilder {
+        UpdateBuilder {
             key: key.to_string(),
             updates: json!({
                 "set": {},
@@ -151,7 +151,7 @@ impl UpdateBuilder {
                 updates.remove(&key);
             }
         }
-        return json!(updates);
+        json!(updates)
     }
     
 }
@@ -212,12 +212,12 @@ pub struct QueryBuilder {
 impl QueryBuilder {
 
     pub fn new() -> QueryBuilder {
-        return QueryBuilder {
+        QueryBuilder {
             map: Some(Map::new()),
             limit: Some(1000),
             last: None,
             ors: Some(Vec::new()),
-        };
+        }
     }
 
     pub fn do_or(&mut self, another: QueryBuilder) {

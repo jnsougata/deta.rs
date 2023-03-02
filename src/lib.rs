@@ -14,6 +14,7 @@
 
 pub mod base;
 pub mod drive;
+pub mod errors;
 pub mod utils;
 
 #[derive(Clone)]
@@ -40,7 +41,7 @@ impl Deta {
     }
 
     pub fn new(project_key: &str) -> Deta {
-        let project_id = project_key.split("_").collect::<Vec<&str>>()[0];
+        let project_id = project_key.split('_').collect::<Vec<&str>>()[0];
         Deta {
             project_key: project_key.to_string(),
             project_id: project_id.to_string(),

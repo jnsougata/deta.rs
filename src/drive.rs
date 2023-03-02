@@ -59,7 +59,7 @@ impl Drive {
         resp.into_string()
     }
 
-    pub fn put<'a>(&self, save_as: &str, content: &'a [u8]) -> Result<Value, std::io::Error> {
+    pub fn put(&self, save_as: &str, content: &[u8]) -> Result<Value, std::io::Error> {
         if content.len() <= 10 * 1024 * 1024 {
             let url = format!(
                 "{}/{}/{}/files?name={}",
@@ -71,7 +71,7 @@ impl Drive {
                 .set("name", save_as)
                 .send_bytes(content)
                 .unwrap();
-            return resp.into_json::<Value>();
+            resp.into_json::<Value>()
         } else {
             const CHUNK_SIZE: usize = 10 * 1024 * 1024;
             let chunks = content.chunks(CHUNK_SIZE);
@@ -86,8 +86,8 @@ impl Drive {
                 .call()
                 .unwrap();
             let init_data = init_resp.into_json::<Value>().unwrap();
-            let upload_id = init_data["upload_id"].to_string().replace("\"", "");
-            let file_name = init_data["name"].to_string().replace("\"", "");
+            let upload_id = init_data["upload_id"].to_string().replace('\"', "");
+            let file_name = init_data["name"].to_string().replace('\"', "");
             let mut done = vec![];
             for (index, chunk) in chunks.enumerate() {
                 let part_url = format!(
@@ -117,7 +117,7 @@ impl Drive {
                     .set("Content-Type", "application/json")
                     .call()
                     .unwrap();
-                return complete_resp.into_json::<Value>();
+                complete_resp.into_json::<Value>()
             } else {
                 let abort_url = format!(
                     "{}/{}/{}/uploads/{}?name={}",
@@ -128,7 +128,7 @@ impl Drive {
                     .set("Content-Type", "application/json")
                     .call()
                     .unwrap();
-                return abort_resp.into_json::<Value>();
+                abort_resp.into_json::<Value>()
             }
         }
     }
