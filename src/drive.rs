@@ -1,3 +1,4 @@
+use crate::errors::DetaError;
 use serde_json::{json, Value};
 
 /// Drive is the struct that represents a Deta Drive.
@@ -25,7 +26,7 @@ impl Drive {
         prefix: Option<&str>,
         limit: Option<i32>,
         last: Option<String>,
-    ) -> Result<Value, std::io::Error> {
+    ) -> Result<Value, DetaError> {
         let mut url = format!("{}/{}/{}/files?", DRIVE_URL, self.project_id, self.name);
         if let Some(limit) = limit {
             url.push_str(&format!("limit={}", limit));
@@ -41,12 +42,11 @@ impl Drive {
         let resp = ureq::get(&url)
             .set("X-Api-Key", &self.project_key)
             .set("Content-Type", "application/json")
-            .call()
-            .unwrap();
-        resp.into_json::<Value>()
+            .call()?;
+        resp.into_json::<Value>().map_err(DetaError::IOError)
     }
 
-    pub fn get(&self, filename: &str) -> Result<String, std::io::Error> {
+    pub fn get(&self, filename: &str) -> Result<String, DetaError> {
         let url = format!(
             "{}/{}/{}/files/download?name={}",
             DRIVE_URL, self.project_id, self.name, filename
@@ -54,12 +54,11 @@ impl Drive {
         let resp = ureq::get(&url)
             .set("X-Api-Key", &self.project_key)
             .set("Content-Type", "application/json")
-            .call()
-            .unwrap();
-        resp.into_string()
+            .call()?;
+        resp.into_string().map_err(DetaError::IOError)
     }
 
-    pub fn put(&self, save_as: &str, content: &[u8]) -> Result<Value, std::io::Error> {
+    pub fn put(&self, save_as: &str, content: &[u8]) -> Result<Value, DetaError> {
         if content.len() <= 10 * 1024 * 1024 {
             let url = format!(
                 "{}/{}/{}/files?name={}",
@@ -69,9 +68,8 @@ impl Drive {
                 .set("X-Api-Key", &self.project_key)
                 .set("Content-Type", "application/octet-stream")
                 .set("name", save_as)
-                .send_bytes(content)
-                .unwrap();
-            resp.into_json::<Value>()
+                .send_bytes(content)?;
+            resp.into_json::<Value>().map_err(DetaError::IOError)
         } else {
             const CHUNK_SIZE: usize = 10 * 1024 * 1024;
             let chunks = content.chunks(CHUNK_SIZE);
@@ -83,9 +81,8 @@ impl Drive {
                 .set("X-Api-Key", &self.project_key)
                 .set("Content-Type", "application/octet-stream")
                 .set("name", save_as)
-                .call()
-                .unwrap();
-            let init_data = init_resp.into_json::<Value>().unwrap();
+                .call()?;
+            let init_data = init_resp.into_json::<Value>().map_err(DetaError::IOError)?;
             let upload_id = init_data["upload_id"].to_string().replace('\"', "");
             let file_name = init_data["name"].to_string().replace('\"', "");
             let mut done = vec![];
@@ -102,8 +99,7 @@ impl Drive {
                 let part_resp = ureq::post(&part_url)
                     .set("X-Api-Key", &self.project_key)
                     .set("Content-Type", "application/octet-stream")
-                    .send_bytes(chunk)
-                    .unwrap();
+                    .send_bytes(chunk)?;
                 done.push(part_resp.status());
             }
             let success = done.iter().all(|&x| x == 200);
@@ -115,9 +111,10 @@ impl Drive {
                 let complete_resp = ureq::patch(&complete_url)
                     .set("X-Api-Key", &self.project_key)
                     .set("Content-Type", "application/json")
-                    .call()
-                    .unwrap();
-                complete_resp.into_json::<Value>()
+                    .call()?;
+                complete_resp
+                    .into_json::<Value>()
+                    .map_err(DetaError::IOError)
             } else {
                 let abort_url = format!(
                     "{}/{}/{}/uploads/{}?name={}",
@@ -126,21 +123,19 @@ impl Drive {
                 let abort_resp = ureq::delete(&abort_url)
                     .set("X-Api-Key", &self.project_key)
                     .set("Content-Type", "application/json")
-                    .call()
-                    .unwrap();
-                abort_resp.into_json::<Value>()
+                    .call()?;
+                abort_resp.into_json::<Value>().map_err(DetaError::IOError)
             }
         }
     }
 
-    pub fn delete(&self, names: Vec<&str>) -> Result<Value, std::io::Error> {
+    pub fn delete(&self, names: Vec<&str>) -> Result<Value, DetaError> {
         let url = format!("{}/{}/{}/files", DRIVE_URL, self.project_id, self.name);
         let payload = json!({ "names": names });
         let resp = ureq::delete(&url)
             .set("X-Api-Key", &self.project_key)
             .set("Content-Type", "application/json")
-            .send_json(payload.to_string())
-            .unwrap();
-        resp.into_json::<Value>()
+            .send_json(payload.to_string())?;
+        resp.into_json::<Value>().map_err(DetaError::IOError)
     }
 }
