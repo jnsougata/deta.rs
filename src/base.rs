@@ -1,7 +1,7 @@
-use reqwest;
+use crate::errors::DetaError;
 use crate::utils::*;
-use serde_json::{json, Value, Map};
-
+use serde_json::{json, Map, Value};
+use ureq;
 
 /// Base represents a struct that can be used to interact with a Deta Base.
 /// ## Methods
@@ -15,12 +15,12 @@ use serde_json::{json, Value, Map};
 /// Deletes the records with the specified keys.
 /// #### query(query)
 /// Queries the Base with the specified query.
-/// 
+///
 /// ## Example
 /// ```rs
 /// use deta_rs::base::{Base, Record};
-/// 
-pub struct Base { 
+///
+pub struct Base {
     pub name: String,
     pub project_id: String,
     pub project_key: String,
@@ -29,18 +29,16 @@ pub struct Base {
 const BASE_URL: &str = "https://database.deta.sh/v1";
 
 impl Base {
-
-    pub fn get(&self, key: &str) -> Result<Value, reqwest::Error> {
-        let url = format!("{}/{}/{}/items/{}", BASE_URL, self.project_id, self.name, key);
-        let res = reqwest::blocking::Client::new()
-            .get(&url)
-            .header("X-API-Key", &self.project_key)
-            .send()
-            .unwrap();
-        res.json::<Value>()
+    pub fn get(&self, key: &str) -> Result<Value, DetaError> {
+        let url = format!(
+            "{}/{}/{}/items/{}",
+            BASE_URL, self.project_id, self.name, key
+        );
+        let res = ureq::get(&url).set("X-API-Key", &self.project_key).call()?;
+        res.into_json::<Value>().map_err(DetaError::IOError)
     }
 
-    pub fn put(&self, records: Vec<Record>) -> Result<Value, reqwest::Error> {
+    pub fn put(&self, records: Vec<Record>) -> Result<Value, DetaError> {
         let url = format!("{}/{}/{}/items", BASE_URL, self.project_id, self.name);
         let mut data = Map::new();
         let mut items = Vec::new();
@@ -48,59 +46,49 @@ impl Base {
             items.push(record.json());
         }
         data.insert("items".to_string(), json!(items));
-        let res = reqwest::blocking::Client::new()
-            .put(&url)
-            .header("X-API-Key", &self.project_key)
-            .json(&json!(data))
-            .send()
-            .unwrap();
-        res.json::<Value>()
+        let res = ureq::put(&url)
+            .set("X-API-Key", &self.project_key)
+            .send_json(json!(data))?;
+        res.into_json::<Value>().map_err(DetaError::IOError)
     }
 
-    pub fn insert(&self, record: Record) -> Result<Value, reqwest::Error> {
+    pub fn insert(&self, record: Record) -> Result<Value, DetaError> {
         let url = format!("{}/{}/{}/items", BASE_URL, self.project_id, self.name);
         let mut data = Map::new();
         data.insert("item".to_string(), json!(record.json()));
-        let res = reqwest::blocking::Client::new()
-            .post(&url)
-            .header("X-API-Key", &self.project_key)
-            .json(&json!(data))
-            .send()
-            .unwrap();
-        res.json::<Value>()
+        let res = ureq::post(&url)
+            .set("X-API-Key", &self.project_key)
+            .send_json(json!(data))?;
+        res.into_json::<Value>().map_err(DetaError::IOError)
     }
 
-    pub fn delete(&self, key: &str) -> Result<Value, reqwest::Error> {
-        let url = format!("{}/{}/{}/items/{}", BASE_URL, self.project_id, self.name, key);
-        //let res = delete(&url, &self.project_key);
-        let res = reqwest::blocking::Client::new()
-            .delete(&url)
-            .header("X-API-Key", &self.project_key)
-            .send()
-            .unwrap();
-        res.json::<Value>()
+    pub fn delete(&self, key: &str) -> Result<Value, DetaError> {
+        let url = format!(
+            "{}/{}/{}/items/{}",
+            BASE_URL, self.project_id, self.name, key
+        );
+        let res = ureq::delete(&url)
+            .set("X-API-Key", &self.project_key)
+            .call()?;
+        res.into_json::<Value>().map_err(DetaError::IOError)
     }
 
-    pub fn update(&self, updater: UpdateBuilder) -> Result<Value, reqwest::Error> {
-        let url = format!("{}/{}/{}/items/{}", BASE_URL, self.project_id, self.name, updater.key);
-        let res = reqwest::blocking::Client::new()
-            .patch(&url)
-            .header("X-API-Key", &self.project_key)
-            .json(&updater.json())
-            .send()
-            .unwrap();
-        res.json::<Value>()
+    pub fn update(&self, updater: UpdateBuilder) -> Result<Value, DetaError> {
+        let url = format!(
+            "{}/{}/{}/items/{}",
+            BASE_URL, self.project_id, self.name, updater.key
+        );
+        let res = ureq::patch(&url)
+            .set("X-API-Key", &self.project_key)
+            .send_json(updater.json())?;
+        res.into_json::<Value>().map_err(DetaError::IOError)
     }
 
-    pub fn query(&self, query: QueryBuilder) ->  Result<Value, reqwest::Error> {
+    pub fn query(&self, query: QueryBuilder) -> Result<Value, DetaError> {
         let url = format!("{}/{}/{}/query", BASE_URL, self.project_id, self.name);
-        let res = reqwest::blocking::Client::new()
-            .post(&url)
-            .header("X-API-Key", &self.project_key)
-            .json(&query.json())
-            .send()
-            .unwrap();
-        res.json::<Value>()
+        let res = ureq::post(&url)
+            .set("X-API-Key", &self.project_key)
+            .send_json(query.json())?;
+        res.into_json::<Value>().map_err(DetaError::IOError)
     }
-
 }
