@@ -7,7 +7,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-deta_rs = { git = "https://github.com/jnsougata/deta-rust"}
+deta_rs = { git = "https://github.com/jnsougata/deta-rust-sdk"}
 ```
 
 ## Quickstart
