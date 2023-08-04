@@ -22,8 +22,7 @@ use ureq;
 ///
 pub struct Base {
     pub name: String,
-    pub project_id: String,
-    pub project_key: String,
+    pub(crate) service: crate::Deta,
 }
 
 const BASE_URL: &str = "https://database.deta.sh/v1";
@@ -32,14 +31,14 @@ impl Base {
     pub fn get(&self, key: &str) -> Result<Value, DetaError> {
         let url = format!(
             "{}/{}/{}/items/{}",
-            BASE_URL, self.project_id, self.name, key
+            BASE_URL, self.service.project_id, self.name, key
         );
-        let res = ureq::get(&url).set("X-API-Key", &self.project_key).call()?;
+        let res = ureq::get(&url).set("X-API-Key", &self.service.project_key).call()?;
         res.into_json::<Value>().map_err(DetaError::IOError)
     }
 
     pub fn put(&self, records: Vec<Record>) -> Result<Value, DetaError> {
-        let url = format!("{}/{}/{}/items", BASE_URL, self.project_id, self.name);
+        let url = format!("{}/{}/{}/items", BASE_URL, self.service.project_id, self.name);
         let mut data = Map::new();
         let mut items = Vec::new();
         for record in records {
@@ -47,17 +46,17 @@ impl Base {
         }
         data.insert("items".to_string(), json!(items));
         let res = ureq::put(&url)
-            .set("X-API-Key", &self.project_key)
+            .set("X-API-Key", &self.service.project_key)
             .send_json(json!(data))?;
         res.into_json::<Value>().map_err(DetaError::IOError)
     }
 
     pub fn insert(&self, record: Record) -> Result<Value, DetaError> {
-        let url = format!("{}/{}/{}/items", BASE_URL, self.project_id, self.name);
+        let url = format!("{}/{}/{}/items", BASE_URL, self.service.project_id, self.name);
         let mut data = Map::new();
         data.insert("item".to_string(), json!(record.json()));
         let res = ureq::post(&url)
-            .set("X-API-Key", &self.project_key)
+            .set("X-API-Key", &self.service.project_key)
             .send_json(json!(data))?;
         res.into_json::<Value>().map_err(DetaError::IOError)
     }
@@ -65,10 +64,10 @@ impl Base {
     pub fn delete(&self, key: &str) -> Result<Value, DetaError> {
         let url = format!(
             "{}/{}/{}/items/{}",
-            BASE_URL, self.project_id, self.name, key
+            BASE_URL, self.service.project_id, self.name, key
         );
         let res = ureq::delete(&url)
-            .set("X-API-Key", &self.project_key)
+            .set("X-API-Key", &self.service.project_key)
             .call()?;
         res.into_json::<Value>().map_err(DetaError::IOError)
     }
@@ -76,18 +75,18 @@ impl Base {
     pub fn update(&self, updater: UpdateBuilder) -> Result<Value, DetaError> {
         let url = format!(
             "{}/{}/{}/items/{}",
-            BASE_URL, self.project_id, self.name, updater.key
+            BASE_URL, self.service.project_id, self.name, updater.key
         );
         let res = ureq::patch(&url)
-            .set("X-API-Key", &self.project_key)
+            .set("X-API-Key", &self.service.project_key)
             .send_json(updater.json())?;
         res.into_json::<Value>().map_err(DetaError::IOError)
     }
 
     pub fn query(&self, query: QueryBuilder) -> Result<Value, DetaError> {
-        let url = format!("{}/{}/{}/query", BASE_URL, self.project_id, self.name);
+        let url = format!("{}/{}/{}/query", BASE_URL, self.service.project_id, self.name);
         let res = ureq::post(&url)
-            .set("X-API-Key", &self.project_key)
+            .set("X-API-Key", &self.service.project_key)
             .send_json(query.json())?;
         res.into_json::<Value>().map_err(DetaError::IOError)
     }

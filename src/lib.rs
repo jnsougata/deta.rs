@@ -12,39 +12,40 @@
 //! let file = drive.get("sample.png");
 //! ```
 
-pub mod base;
-pub mod drive;
-pub mod errors;
+mod base;
+mod drive;
 pub mod utils;
+pub mod errors;
 
 #[derive(Clone)]
 pub struct Deta {
     pub project_key: String,
-    pub project_id: String,
+    project_id: String,
 }
 
 impl Deta {
     pub fn base(&self, name: &str) -> base::Base {
         base::Base {
             name: name.to_string(),
-            project_id: self.project_id.clone(),
-            project_key: self.project_key.clone(),
+            service: self.clone(),
         }
     }
 
     pub fn drive(&self, name: &str) -> drive::Drive {
         drive::Drive {
             name: name.to_string(),
-            project_id: self.project_id.clone(),
-            project_key: self.project_key.clone(),
+            service: self.clone(),
         }
     }
 
     pub fn new(project_key: &str) -> Deta {
-        let project_id = project_key.split('_').collect::<Vec<&str>>()[0];
+        let d = project_key.split('_').collect::<Vec<&str>>();
+        if d.len() != 2 {
+            panic!("Invalid project key.");
+        }
         Deta {
             project_key: project_key.to_string(),
-            project_id: project_id.to_string(),
+            project_id: d[0].to_string(),
         }
     }
 }
