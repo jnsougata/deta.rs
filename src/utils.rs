@@ -206,6 +206,7 @@ pub struct QueryBuilder {
     pub map: Option<Map<String, Value>>,
     pub limit: Option<i64>,
     pub last: Option<String>,
+    pub sort: Option<bool>,
     ors : Option<Vec<Map<String, Value>>>,
 }
 
@@ -216,6 +217,7 @@ impl QueryBuilder {
             map: Some(Map::new()),
             limit: Some(1000),
             last: None,
+            sort: None,
             ors: Some(Vec::new()),
         }
     }
@@ -271,6 +273,9 @@ impl QueryBuilder {
         }
         if let Some(last) = &self.last {
             data.insert("last".to_string(), json!(last));
+        }
+        if !self.sort.is_none() && self.sort.unwrap() {
+            data.insert("sort".to_string(), json!("desc"));
         }
         let mut temp = vec![];
         if let Some(ors) = &self.ors {
