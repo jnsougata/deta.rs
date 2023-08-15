@@ -10,6 +10,8 @@ pub enum DetaError {
     TransportError,
     #[error("IO error")]
     IOError(#[from] std::io::Error),
+    #[error("JSON error")]
+    JSONError(#[from] serde_json::Error),
 }
 
 impl From<ureq::Error> for DetaError {
