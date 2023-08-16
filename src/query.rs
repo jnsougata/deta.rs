@@ -2,15 +2,24 @@ use serde_json::{Value, Map};
 use serde::Serialize;
 
 
+/// Represents a query operator.
 #[derive(Debug, PartialEq)]
 pub enum Operator {
+    /// Equal to
     Eq,
+    /// Not equal to
     Ne,
+    /// Greater than
     Gt,
+    /// Greater than or equal to
     Gte,
+    /// Less than
     Lt,
+    /// Less than or equal to
     Lte,
+    /// In range
     Range,
+    /// Contains
     Contains
 }
 
@@ -20,11 +29,15 @@ impl Operator {
     }
 }
 
-
+/// Represents a query.
 #[derive(Debug, Clone)]
 pub struct Query {
+
+    /// The maximum number of items to return. Default maximum is 1000.
     pub limit: Option<u32>,
+    /// The last key returned in the previous query. Used for pagination.
     pub last: Option<String>,
+    /// Whether to sort the results in descending order. Default is false.
     pub sort: Option<bool>,
     container: Vec<Value>,
     map: Map<String, Value>
@@ -42,6 +55,15 @@ impl Query {
         }
     }
 
+    /// Creates a query from the given value.
+    /// This is useful for creating a query manually.
+    pub fn from(value: Value) -> Query {
+        let mut query = Query::new();
+        query.container.push(value);
+        query
+    }
+
+    /// Merges the given query into this query.
     pub fn union(&mut self, other: Query) {
         for item in other.container {
             self.container.push(item);
@@ -49,6 +71,7 @@ impl Query {
         self.container.push(Value::Object(other.map));
     }
 
+    /// Adds a query operation to this query.
     pub fn set(&mut self, op: Operator, field: &str, value: Value) {
         let f = match op {
             Operator::Eq => field.to_string(),

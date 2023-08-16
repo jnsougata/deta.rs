@@ -1,7 +1,7 @@
 use crate::{
     errors::DetaError, 
-    utils::UpdateBuilder,
-    query::Query 
+    query::Query,
+    updater::Updater, 
 };
 use serde_json::{Value, Map, json};
 use serde::{Serialize, de::DeserializeOwned};
@@ -85,8 +85,8 @@ impl Base {
         self.request("DELETE", &format!("/items/{}", key), None)
     }
 
-    pub fn update(&self, builder: UpdateBuilder) -> Result<Value, DetaError> {
-        self.request("PATCH", &format!("/items/{}", builder.key), Some(builder.json()))
+    pub fn update(&self, key: &str, builder: Updater) -> Result<Value, DetaError> {
+        self.request("PATCH", &format!("/items/{}", key), Some(serde_json::to_value(builder).unwrap()))
     }
 
     pub fn fetch(&self, builder: Query) -> Result<Value, DetaError> {

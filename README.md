@@ -7,7 +7,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-deta_rs = { git = "https://github.com/jnsougata/deta-rust-sdk"}
+deta_rs = { git = "https://github.com/jnsougata/deta.rs" }
 ```
 
 ## Quickstart
@@ -18,11 +18,11 @@ use serde_json::json;
 
 fn main() {
 
-    let d = Deta::new("your_project_key");
+    let deta = Deta::new("your_project_key");
 
     // lazily create a base and drive
-    let base = d.base("your_base_name"); 
-    let drive = d.drive("your_drive_name");
+    let base = deta.base("your_base_name"); 
+    let drive = deta.drive("your_drive_name");
 
     // build a record to put in the base
     let record = utils::Record {

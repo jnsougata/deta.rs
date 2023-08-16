@@ -5,8 +5,8 @@
 mod base;
 mod drive;
 pub mod query;
-pub mod utils;
 pub mod errors;
+pub mod updater;
 
 
 fn validate(key: &str) -> String {
@@ -100,11 +100,15 @@ mod check {
     #[test]
     fn sdk_test() {
 
-        let mut q = query::Query::new();
-        q.limit = Some(1);
-        q.set(query::Operator::Eq, "name", serde_json::Value::String("John".to_string()));
+        let deta = Deta::new();
+        let base = deta.base("hello");
 
+        assert_eq!(base.name, "hello");
 
+    }
+
+    #[test]
+    fn sdk_base_get() {
         let deta = Deta::new();
         let base = deta.base("hello");
         let user = User {
@@ -117,11 +121,34 @@ mod check {
         let deserialized = base.get_as::<User>(user.key.as_str()).unwrap();
 
         assert_eq!(deserialized.key, user.key);
+    }
 
+    #[test]
+    #[should_panic]
+    fn sdk_base_insert() {
+        let deta = Deta::new();
+        let base = deta.base("hello");
+        let user = User {
+            key: "1234".to_string(),
+            name: "John".to_string(),
+            age: 20,
+            address: "123 Main St".to_string(),
+        };
+        let value = base.insert(&user).unwrap();
+
+        assert_eq!(serde_json::from_value::<User>(value).unwrap().key, user.key);
+    }
+
+    #[test]
+    fn sdk_base_fetch() {
+        let deta = Deta::new();
+        let base = deta.base("hello");
+        let mut q = query::Query::new();
+        q.limit = Some(1);
+        q.set(query::Operator::Eq, "name", serde_json::Value::String("John".to_string()));
         let qr = base.fetch(q).unwrap();
 
         assert_eq!(qr["items"].as_array().unwrap().len(), 1);
-
     }
 
 }
