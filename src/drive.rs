@@ -2,158 +2,125 @@ use crate::errors::DetaError;
 use serde_json::{json, Value};
 use ureq::Response;
 
-/// Drive is the struct that represents a Deta Drive.
-/// ## Methods
-/// #### `list(prefix, limit, last)`
-/// Gets a list of files in the drive.
-/// #### `get(filename)`
-/// Gets a file from the drive. Returns a tuple of the status code and the file contents.
-/// #### `put(save_as, content)`
-/// Puts a file in the drive. Returns a tuple of the status code and the response.
-/// #### `delete(names)`
-/// Deletes file(s) from the drive. Returns a tuple of the status code and the response.
 
+const MAX_CHUNK_SIZE: usize = 10 * 1024 * 1024;
+
+/// Represents a Deta Drive.
 pub struct Drive {
     pub name: String,
     pub(crate) service: crate::Deta,
 }
 
-const DRIVE_URL: &str = "https://drive.deta.sh/v1";
-
 impl Drive {
+
+    fn request(
+        &self, 
+        method: &str, 
+        path: &str, 
+        json: Option<Value>,
+        content: Option<&[u8]>,
+        content_type: Option<&str>
+    ) -> Result<Value, DetaError> {
+        let url = format!(
+            "https://drive.deta.sh/v1/{}/{}{}", self.service.project_id, self.name, path);
+        let mut req = ureq::request(method, &url);
+        req = req.set("X-API-Key", &self.service.project_key);
+        match content_type {
+            Some(content_type) => req = req.set("Content-Type", content_type),
+            None => req = req.set("Content-Type", "application/json")
+        }
+        let resp = match (json, content) {
+            (Some(_), Some(_)) => return Err(DetaError::TransportError),
+            (Some(body), None) => req.send_json(body),
+            (None, Some(body)) => req.send_bytes(body),
+            (None, None) => req.call(),
+        };
+        if resp.is_err() {
+            return Err(DetaError::from(resp.err().unwrap()));
+        } else {
+            Ok(resp.unwrap().into_json().unwrap())
+        }
+    }
+
+    /// List files in drive.
     pub fn list(
         &self,
         prefix: Option<&str>,
         limit: Option<i32>,
         last: Option<String>,
     ) -> Result<Value, DetaError> {
-        let mut url = format!("{}/{}/{}/files?", DRIVE_URL, self.service.project_id, self.name);
+        let mut path = String::from("/files?");
         if let Some(limit) = limit {
-            url.push_str(&format!("limit={}", limit));
+            path.push_str(&format!("limit={}", limit));
         } else {
-            url.push_str("limit=1000");
+            path.push_str("limit=1000");
         }
         if let Some(prefix) = prefix {
-            url.push_str(&format!("&prefix={}", prefix));
+            path.push_str(&format!("&prefix={}", prefix));
         }
         if let Some(last) = last {
-            url.push_str(&format!("&last={}", last));
+            path.push_str(&format!("&last={}", last));
         }
-        let resp = ureq::get(&url)
-            .set("X-Api-Key", &self.service.project_key)
-            .set("Content-Type", "application/json")
-            .call()?;
-        resp.into_json::<Value>().map_err(DetaError::IOError)
+        self.request("GET", &path, None, None, None)
     }
 
-    pub fn get(&self, filename: &str) -> Result<Response, DetaError> {
+    /// Get a file from drive.
+    pub fn get(&self, name: &str) -> Result<Response, DetaError> {
+        let path = format!("/files/download?name={}", name);
         let url = format!(
-            "{}/{}/{}/files/download?name={}",
-            DRIVE_URL, self.service.project_id, self.name, filename
-        );
-        let resp = ureq::get(&url)
-            .set("X-Api-Key", &self.service.project_key)
-            .set("Content-Type", "application/json")
-            .call()?;
-        if resp.status() == 200 {
-            Ok(resp)
+            "https://drive.deta.sh/v1/{}/{}{}", self.service.project_id, self.name, path);
+        let mut req = ureq::get(&url);
+        req = req.set("X-API-Key", &self.service.project_key);
+        let resp = req.call();
+
+        if resp.is_err() {
+            return Err(DetaError::from(resp.err().unwrap()));
         } else {
-            let status = resp.status();
-            let errors = resp.into_json::<Value>()?;
-            Err(DetaError::HTTPError { 
-                status_code: status, 
-                msg: errors["errors"].to_string().replace('\"', "") 
-            })
+            Ok(resp.unwrap())
         }
     }
 
+    /// Put a new file to drive.
     pub fn put(
-        &self, 
-        save_as: &str, 
-        content: &[u8],
-        content_type: Option<&str>
+        &self, save_as: &str, content: &[u8], content_type: Option<&str>
     ) -> Result<Value, DetaError> {
-        if content.len() <= 10 * 1024 * 1024 {
-            let url = format!(
-                "{}/{}/{}/files?name={}",
-                DRIVE_URL, self.service.project_id, self.name, save_as
-            );
-            let resp = ureq::post(&url)
-                .set("X-Api-Key", &self.service.project_key)
-                .set("Content-Type", "application/octet-stream")
-                .set("name", save_as)
-                .send_bytes(content)?;
-            resp.into_json::<Value>().map_err(DetaError::IOError)
+        if content.len() <= MAX_CHUNK_SIZE {
+            self.request(
+                "POST",
+                &format!("/files?name={}", save_as),
+                None,
+                Some(content),
+                content_type
+            )
         } else {
-            const CHUNK_SIZE: usize = 10 * 1024 * 1024;
-            let chunks = content.chunks(CHUNK_SIZE);
-            let init_url = format!(
-                "{}/{}/{}/uploads?name={}",
-                DRIVE_URL, self.service.project_id, self.name, save_as
-            );
-            let init_resp = ureq::post(&init_url)
-                .set("X-Api-Key", &self.service.project_key)
-                .set("Content-Type", "application/octet-stream")
-                .set("name", save_as)
-                .call()?;
-            let init_data = init_resp.into_json::<Value>().map_err(DetaError::IOError)?;
-            let upload_id = init_data["upload_id"].to_string().replace('\"', "");
-            let file_name = init_data["name"].to_string().replace('\"', "");
-            let mut done = vec![];
-            for (index, chunk) in chunks.enumerate() {
-                let part_url = format!(
-                    "{}/{}/{}/uploads/{}/parts?name={}&part={}",
-                    DRIVE_URL,
-                    self.service.project_id,
-                    self.name,
-                    upload_id,
-                    file_name,
-                    index + 1
-                );
-                let mime = match content_type {
-                    Some(content_type) => content_type,
-                    None => "application/octet-stream",
-                };
-                let part_resp = ureq::post(&part_url)
-                    .set("X-Api-Key", &self.service.project_key)
-                    .set("Content-Type", mime)
-                    .send_bytes(chunk)?;
-                done.push(part_resp.status());
+            let chunks = content.chunks(MAX_CHUNK_SIZE);
+            let init = self.request(
+                "POST",
+                &format!("/uploads?name={}", save_as),
+                None,
+                None,
+                None
+            )?;
+            let upload_id = init["upload_id"].to_string().replace('\"', "");
+            let mut done: Vec<Result<Value, DetaError> > = vec![];
+            for (i, chunk) in chunks.enumerate() {
+                let path = format!("/uploads/{}/parts?name={}&part={}", upload_id, save_as, i+1);
+                done.push(self.request("POST", &path, None, Some(chunk), content_type)
+                )
             }
-            let success = done.iter().all(|&x| x == 200);
+            let success = done.iter().all(|x| x.is_err());
+            let path = format!("/uploads/{}?name={}", upload_id, save_as);
             if success {
-                let complete_url = format!(
-                    "{}/{}/{}/uploads/{}?name={}",
-                    DRIVE_URL, self.service.project_id, self.name, upload_id, file_name
-                );
-                let complete_resp = ureq::patch(&complete_url)
-                    .set("X-Api-Key", &self.service.project_key)
-                    .set("Content-Type", "application/json")
-                    .call()?;
-                complete_resp
-                    .into_json::<Value>()
-                    .map_err(DetaError::IOError)
+                self.request("PATCH", &path, None, None, None)
             } else {
-                let abort_url = format!(
-                    "{}/{}/{}/uploads/{}?name={}",
-                    DRIVE_URL, self.service.project_id, self.name, upload_id, file_name
-                );
-                let abort_resp = ureq::delete(&abort_url)
-                    .set("X-Api-Key", &self.service.project_key)
-                    .set("Content-Type", "application/json")
-                    .call()?;
-                abort_resp.into_json::<Value>().map_err(DetaError::IOError)
+                self.request("DELETE", &path, None, None, None)
             }
         }
     }
 
+    /// Delete multiple files from drive.
     pub fn delete(&self, names: Vec<&str>) -> Result<Value, DetaError> {
-        let url = format!("{}/{}/{}/files", DRIVE_URL, self.service.project_id, self.name);
-        let payload = json!({ "names": names });
-        let resp = ureq::delete(&url)
-            .set("X-Api-Key", &self.service.project_key)
-            .set("Content-Type", "application/json")
-            .send_json(payload.to_string())?;
-        resp.into_json::<Value>().map_err(DetaError::IOError)
+        self.request("DELETE", "/files", Some(json!({ "names": names })), None, None)
     }
+
 }

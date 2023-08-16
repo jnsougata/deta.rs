@@ -2,6 +2,11 @@
 name = "deta"
 version = "0.1.0"
 edition = "2021"
+authors = ["Sougata Jana"]
+description = "A Rust client for Deta Base"
+repository = "https://github.com/jnsougata/deta.rs"
+readme = "README.md"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
