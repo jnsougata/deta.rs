@@ -3,7 +3,7 @@ Rust bindings for the Deta **Base** and **Drive** [HTTP API](https://deta.space/
 
 ## Usage
 
-Add this to your `Cargo.toml`:
+`Cargo.toml`
 
 ```toml
 [dependencies]
