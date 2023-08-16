@@ -1,5 +1,5 @@
-# Deta Rust
-Rust bindings for the Deta [Base](https://docs.deta.sh/docs/base/http) and [Drive](https://docs.deta.sh/docs/drive/http) HTTP API
+# deta.rs
+Rust bindings for the Deta **Base** and **Drive** [HTTP API](https://deta.space/docs/en/build/reference/http-api#content)
 
 ## Usage
 
