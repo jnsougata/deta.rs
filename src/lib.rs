@@ -11,7 +11,7 @@ pub mod updater;
 
 fn validate(key: &str) -> String {
     let d = key.split('_').collect::<Vec<&str>>();
-    assert!(d.len() == 2, "invalid project key");
+    assert_eq!(d.len(), 2, "invalid project key");
     d[0].to_string()
 }
 
@@ -104,7 +104,6 @@ mod check {
         let base = deta.base("hello");
 
         assert_eq!(base.name, "hello");
-
     }
 
     #[test]
