@@ -65,7 +65,7 @@ impl Updater {
     }
 
      /// Update a record by key in the base.
-     pub fn execute(&self) -> Result<Value, DetaError> {
+     pub fn run(&self) -> Result<Value, DetaError> {
         self.base.request("PATCH", &format!("/items/{}", self.key), Some(serde_json::to_value(self).unwrap()))
     }
 

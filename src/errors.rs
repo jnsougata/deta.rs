@@ -14,6 +14,8 @@ pub enum DetaError {
     HTTPError { status_code: u16, msg: String },
     #[error("transport error")]
     TransportError,
+    #[error("Custom error: {msg}")]
+    PayloadError { msg: String },
     #[error("IO error")]
     IOError(#[from] std::io::Error),
     #[error("JSON error")]
@@ -32,6 +34,7 @@ impl From<ureq::Error> for DetaError {
                 msg: res.status_text().to_string(),
             },
             ureq::Error::Transport(_) => DetaError::TransportError,
+
         }
     }
 }

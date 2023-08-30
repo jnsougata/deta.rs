@@ -57,13 +57,16 @@ impl Base {
     /// 
     /// Overwrites existing records with the same key.
     pub fn put<T>(&self, records: Vec<T>) -> Result<Value, DetaError> where T: Serialize {
-        let mut data = Map::new();
+        if records.len() > 25 {
+            return Err(DetaError::PayloadError { msg: "maximum 25 records can be put at a time".to_string() });
+        }
+        let mut payload = Map::new();
         let mut items = Vec::new();
         for record in records {
             items.push(serde_json::to_value(&record).unwrap());
         }
-        data.insert("items".to_string(), json!(items));
-        self.request("PUT", "/items", Some(json!(data)))
+        payload.insert("items".to_string(), json!(items));
+        self.request("PUT", "/items", Some(json!(payload)))
     }
 
     /// Insert a serializable record into the base.

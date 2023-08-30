@@ -153,7 +153,7 @@ mod check {
             .set(Operator::Eq, "name", Value::String("John".to_string()))
             .set(Operator::Gt, "age", Value::Number(Number::from(18)))
             .set(Operator::Lt, "age", Value::Number(Number::from(21)))
-            .execute();
+            .run();
 
         assert!(resp.is_ok());
     }
@@ -167,7 +167,7 @@ mod check {
         let resp = base.update("1234")
             .operation(Operation::Set, "name", Value::String("John".to_string()))
             .operation(Operation::Increment, "age", Value::Number(Number::from(1)))
-            .execute();
+            .run();
         
         assert!(resp.is_ok());
     }

@@ -1,5 +1,5 @@
 use serde_json::{Value, Map};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use crate::{base::Base, errors::DetaError};
 
 
@@ -30,7 +30,21 @@ impl Operator {
     }
 }
 
+#[derive(Deserialize, Serialize)]
+struct Paging {
+    size: u16,
+    #[serde(default)]
+    last: String
+}
+
+#[derive(Deserialize, Serialize)]
+struct QueryResult {
+    paging: Paging,
+    items: Vec<Value>
+}
+
 /// Represents a query.
+#[derive(Clone)]
 pub struct Query {
     base: Base,
     /// The maximum number of items to return. Default maximum is 1000.
@@ -57,8 +71,27 @@ impl Query {
     }
 
     /// Executes the query on the base.
-    pub fn execute(&self) -> Result<Value, DetaError> {
+    pub fn run(&self) -> Result<Value, DetaError> {
         self.base.request("POST", "/query", Some(serde_json::to_value(self).unwrap()))
+    }
+
+    /// Executes the query until there are no more results.
+    pub fn run_until_end(&self) -> Result<Value, DetaError> {
+        if !self.limit.is_none() {
+            return Err(DetaError::PayloadError { msg: "limit must be None for run_until_end".to_string() });
+        }
+        let mut resp = self.run()?;
+        let mut result = serde_json::from_value::<QueryResult>(resp.clone()).unwrap();
+        loop {
+            let mut tmp = resp["items"].as_array().unwrap().clone();
+            result.items.append(&mut tmp);
+            if result.paging.last == "" {
+                break;
+            }
+            resp = self.clone().last(&result.paging.last).run()?;
+        }
+        result.paging.size = result.items.len() as u16;
+        Ok(serde_json::to_value(result).unwrap())
     }
 
     /// Sets the limit of the query.
