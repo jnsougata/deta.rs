@@ -25,7 +25,7 @@ impl Base {
     ) -> Result<Value, DetaError> {
         let url = format!("https://database.deta.sh/v1/{}/{}{}", self.service.project_id, self.name, path);
         let req = ureq::request(method, &url)
-        .set("X-API-Key", &self.service.project_key);
+            .set("X-API-Key", &self.service.project_key);
         let resp = match body {
             Some(body) => req.send_json(body),
             None => req.call()

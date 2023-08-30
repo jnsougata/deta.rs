@@ -30,14 +30,16 @@ impl Drive {
     ) -> Result<Value, DetaError> {
         let url = format!(
             "https://drive.deta.sh/v1/{}/{}{}", self.service.project_id, self.name, path);
-        let mut req = ureq::request(method, &url);
-        req = req.set("X-API-Key", &self.service.project_key);
+        let mut req = ureq::request(method, &url)
+            .set("X-API-Key", &self.service.project_key);
         match content_type {
             Some(content_type) => req = req.set("Content-Type", content_type),
             None => req = req.set("Content-Type", "application/json")
         }
         let resp = match (json, content) {
-            (Some(_), Some(_)) => return Err(DetaError::TransportError),
+            (Some(_), Some(_)) => return Err(
+                DetaError::PayloadError { msg: "json and content can not be both Some".to_string() }
+            ),
             (Some(body), None) => req.send_json(body),
             (None, Some(body)) => req.send_bytes(body),
             (None, None) => req.call(),
@@ -89,10 +91,9 @@ impl Drive {
         let path = format!("/files/download?name={}", name);
         let url = format!(
             "https://drive.deta.sh/v1/{}/{}{}", self.service.project_id, self.name, path);
-        let mut req = ureq::get(&url);
-        req = req.set("X-API-Key", &self.service.project_key);
-        let resp = req.call();
-
+        let resp = ureq::get(&url)
+            .set("X-API-Key", &self.service.project_key)
+            .call();
         if resp.is_err() {
             return Err(DetaError::from(resp.err().unwrap()));
         } else {
