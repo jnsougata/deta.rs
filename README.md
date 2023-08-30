@@ -7,7 +7,7 @@ Rust bindings for the Deta **Base** and **Drive** [HTTP API](https://deta.space/
 
 ```toml
 [dependencies]
-deta-sdk = "0.1.0"
+deta-sdk = "0.1.2"
 ```
 
 ## Quickstart
