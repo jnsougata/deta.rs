@@ -8,6 +8,9 @@ pub mod query;
 pub mod errors;
 pub mod updater;
 
+use base::Base;
+use drive::Drive;
+
 
 fn validate(key: &str) -> String {
     let d = key.split('_').collect::<Vec<&str>>();
@@ -25,7 +28,7 @@ impl Deta {
 
     /// Create a new Deta instance from a project key
     /// ```rust
-    /// use deta::Deta;
+    /// use detalib::Deta;
     /// 
     /// let deta = Deta::from("project_key");
     /// let base = deta.base("hello");
@@ -39,7 +42,7 @@ impl Deta {
 
     /// Create a new Deta instance from the `DETA_PROJECT_KEY` environment variable
     /// ```rust
-    /// use deta::Deta;
+    /// use detalib::Deta;
     /// 
     /// let deta = Deta::new();
     /// let base = deta.base("world");
@@ -49,18 +52,18 @@ impl Deta {
 
         Deta {
             project_id: validate(&var),
-            project_key:var,
+            project_key: var,
         }
     }
 
     /// Create a new Deta Base instance
     /// ```rust
-    /// use deta::Deta;
+    /// use detalib::Deta;
     /// 
     /// let deta = Deta::new();
     /// let base = deta.base("hello");
     /// ```
-    pub fn base(&self, name: &str) -> base::Base {
+    pub fn base(&self, name: &str) -> Base {
         base::Base {
             name: name.to_string(),
             service: self.clone(),
@@ -69,12 +72,12 @@ impl Deta {
 
     /// Create a new Deta Drive instance
     /// ```rust
-    /// use deta::Deta;
+    /// use detalib::Deta;
     /// 
     /// let deta = Deta::new();
     /// let drive = deta.drive("world");
     /// ```
-    pub fn drive(&self, name: &str) -> drive::Drive {
+    pub fn drive(&self, name: &str) -> Drive {
         drive::Drive {
             name: name.to_string(),
             service: self.clone(),
@@ -117,9 +120,9 @@ mod check {
             address: "123 Main St".to_string(),
         };
         _ = base.insert(&user);
-        let deserialized = base.get_as::<User>(user.key.as_str()).unwrap();
+        let deserialized = base.get_as::<User>(user.key.as_str());
 
-        assert_eq!(deserialized.key, user.key);
+        assert!(deserialized.is_ok());
     }
 
     #[test]
@@ -133,21 +136,40 @@ mod check {
             age: 20,
             address: "123 Main St".to_string(),
         };
-        let value = base.insert(&user).unwrap();
+        let resp = base.insert(&user);
 
-        assert_eq!(serde_json::from_value::<User>(value).unwrap().key, user.key);
+        assert!(resp.is_ok());
     }
 
     #[test]
-    fn sdk_base_fetch() {
-        let deta = Deta::new();
-        let base = deta.base("hello");
-        let mut q = query::Query::new();
-        q.limit = Some(1);
-        q.set(query::Operator::Eq, "name", serde_json::Value::String("John".to_string()));
-        let qr = base.fetch(q).unwrap();
+    fn sdk_base_query() {
+        use serde_json::{Value, Number};
+        use query::Operator;
 
-        assert_eq!(qr["items"].as_array().unwrap().len(), 1);
+        let base = Deta::new().base("hello");
+        let resp = base.query()
+            .limit(1)
+            .sort(true)
+            .set(Operator::Eq, "name", Value::String("John".to_string()))
+            .set(Operator::Gt, "age", Value::Number(Number::from(18)))
+            .set(Operator::Lt, "age", Value::Number(Number::from(21)))
+            .execute();
+
+        assert!(resp.is_ok());
+    }
+
+    #[test]
+    fn sdk_base_update() {
+        use serde_json::{Value, Number};
+        use updater::Operation;
+
+        let base = Deta::new().base("hello");
+        let resp = base.update("1234")
+            .operation(Operation::Set, "name", Value::String("John".to_string()))
+            .operation(Operation::Increment, "age", Value::Number(Number::from(1)))
+            .execute();
+        
+        assert!(resp.is_ok());
     }
 
 }

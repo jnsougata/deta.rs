@@ -8,13 +8,15 @@ Rust bindings for the Deta **Base** and **Drive** [HTTP API](https://deta.space/
 ```toml
 [dependencies]
 detalib = "0.1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 ```
 
 ## Quickstart
 
 ```rust
 use serde;
-use deta::Deta;
+use detalib::Deta;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct User {

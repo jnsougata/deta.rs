@@ -1,6 +1,8 @@
 use serde_json::{Map, Value};
 use serde::{Serialize, Serializer};
 
+use crate::{base::Base, errors::DetaError};
+
 /// Represents the operation to be performed on a field.
 #[derive(Debug, PartialEq)]
 pub enum Operation {
@@ -22,15 +24,18 @@ impl Operation {
     }
 }
 
-
-#[derive(Debug)]
+/// Represents an updater to update a field in a record.
 pub struct Updater {
+    key: String,
+    base: Base,
     map: Vec<(String, Value, Operation)>
 }
 
 impl Updater {
-    pub fn new() -> Updater {
+    pub (crate) fn new(base: Base, key: &str) -> Updater {
         Updater {
+            base,
+            key: key.to_string(),
             map: Vec::new()
         }
     }
@@ -54,8 +59,14 @@ impl Updater {
     /// // Note: Delete operations can not be combined with other operations on foo.
     /// updater.update("foo".to_string(), Value::Null), Operation::Delete);
     /// ```
-    pub fn update(&mut self, field: String, value: Value, operation: Operation) {
-        self.map.push((field, value, operation));
+    pub fn operation(mut self, op: Operation, field: &str, value: Value) -> Self{
+        self.map.push((field.to_string(), value, op));
+        self
+    }
+
+     /// Update a record by key in the base.
+     pub fn execute(&self) -> Result<Value, DetaError> {
+        self.base.request("PATCH", &format!("/items/{}", self.key), Some(serde_json::to_value(self).unwrap()))
     }
 
 }

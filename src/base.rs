@@ -8,6 +8,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use ureq;
 
 /// Represents a Deta Base.
+#[derive(Clone)]
 pub struct Base {
     pub name: String,
     pub(crate) service: crate::Deta,
@@ -16,15 +17,15 @@ pub struct Base {
 
 impl Base {
 
-    fn request(
+    pub (crate) fn request(
         &self, 
         method: &str, 
         path: &str, 
         body: Option<Value>
     ) -> Result<Value, DetaError> {
         let url = format!("https://database.deta.sh/v1/{}/{}{}", self.service.project_id, self.name, path);
-        let mut req = ureq::request(method, &url);
-        req = req.set("X-API-Key", &self.service.project_key);
+        let req = ureq::request(method, &url)
+        .set("X-API-Key", &self.service.project_key);
         let resp = match body {
             Some(body) => req.send_json(body),
             None => req.call()
@@ -78,13 +79,13 @@ impl Base {
     }
 
     /// Update a record by key in the base.
-    pub fn update(&self, key: &str, builder: Updater) -> Result<Value, DetaError> {
-        self.request("PATCH", &format!("/items/{}", key), Some(serde_json::to_value(builder).unwrap()))
+    pub fn update(&self, key: &str) -> Updater {
+        Updater::new(self.clone(), key)
     }
 
-    /// Fetch records from the base using a query.
-    pub fn fetch(&self, builder: Query) -> Result<Value, DetaError> {
-        self.request("POST", "/query", Some(serde_json::to_value(builder).unwrap()))
+    /// Create a new query for this base.
+    pub fn query(&self) -> Query {
+        Query::new(self.clone())
     }
     
 }
