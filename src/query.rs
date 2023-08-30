@@ -31,10 +31,10 @@ impl Operator {
 }
 
 #[derive(Deserialize, Serialize)]
-struct Paging {
-    size: u16,
+pub (crate) struct Paging {
+    pub(crate) size: u16,
     #[serde(default)]
-    last: String
+    pub(crate) last: String
 }
 
 #[derive(Deserialize, Serialize)]

@@ -1,9 +1,16 @@
-use crate::errors::DetaError;
+use crate::{errors::DetaError, query::Paging};
 use serde_json::{json, Value};
 use ureq::Response;
+use serde::{Serialize, Deserialize};
 
 
 const MAX_CHUNK_SIZE: usize = 10 * 1024 * 1024;
+
+#[derive(Deserialize, Serialize)]
+struct FileList {
+    paging: Paging,
+    names: Vec<String>
+}
 
 /// Represents a Deta Drive.
 pub struct Drive {
@@ -47,7 +54,7 @@ impl Drive {
         &self,
         prefix: Option<&str>,
         limit: Option<i32>,
-        last: Option<String>,
+        last: Option<&str>,
     ) -> Result<Value, DetaError> {
         let mut path = String::from("/files?");
         if let Some(limit) = limit {
@@ -62,6 +69,19 @@ impl Drive {
             path.push_str(&format!("&last={}", last));
         }
         self.request("GET", &path, None, None, None)
+    }
+
+    pub fn list_all(&self, prefix: Option<&str>) -> Result<Value, DetaError> {
+        let mut resp = self.list(prefix, None, None)?;
+        let mut result = serde_json::from_value::<FileList>(resp.clone()).unwrap();
+        while result.paging.last != "" {
+            resp = self.list(prefix, Some(1000), Some(result.paging.last.as_str()))?;
+            let tmp = serde_json::from_value::<FileList>(resp.clone()).unwrap();
+            result.paging = tmp.paging;
+            result.names.append(&mut tmp.names.clone());
+        }
+        result.paging.size = result.names.len() as u16;
+        Ok(serde_json::to_value(result).unwrap())
     }
 
     /// Get a file from drive.
