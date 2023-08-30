@@ -25,6 +25,13 @@ impl Operation {
 }
 
 /// Represents an updater to update a field in a record.
+/// 
+/// For delete operations, the value is ignored so it can be anything.
+/// For all other operations, the value is used.
+/// 
+/// A single updater can contain multiple updates.
+/// 
+/// An Updater can not contain delete operation along with any other operation for the same field.
 pub struct Updater {
     key: String,
     base: Base,
@@ -39,33 +46,15 @@ impl Updater {
             map: Vec::new()
         }
     }
-
-    /// Updates the given field with the given value and operation.
-    /// 
-    /// For delete operations, the value is ignored so it can be anything.
-    /// For all other operations, the value is used.
-    /// 
-    /// A single updater can contain multiple updates.
-    /// 
-    /// An Updater can not contain delete operation along with any other operation for the same field.
-    /// ```rust
-    /// use serde_json::Value;
-    /// 
-    /// let mut updater = Updater::new();
-    /// updater.update("foo".to_string(), Value::String("bar".to_string()), Operation::Set);
-    /// updater.update("foos".to_string(), Value::String("baz".to_string()), Operation::Append);
-    /// updater.update("foos".to_string(), Value::String("qux".to_string()), Operation::Prepend);
-    /// updater.update("foo_count".to_string(), Value::Number(1.into()), Operation::Increment);
-    /// // Note: Delete operations can not be combined with other operations on foo.
-    /// updater.update("foo".to_string(), Value::Null), Operation::Delete);
-    /// ```
-    pub fn operation(mut self, op: Operation, field: &str, value: Value) -> Self{
+    
+    /// Set a field to the given value with the operation to be performed.
+    pub fn operation(mut self, op: Operation, field: &str, value: Value) -> Self {
         self.map.push((field.to_string(), value, op));
         self
     }
 
-     /// Update a record by key in the base.
-     pub fn run(&self) -> Result<Value, DetaError> {
+    /// Update a record by key in the base.
+    pub fn run(&self) -> Result<Value, DetaError> {
         self.base.request("PATCH", &format!("/items/{}", self.key), Some(serde_json::to_value(self).unwrap()))
     }
 
