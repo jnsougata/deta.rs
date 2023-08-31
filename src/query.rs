@@ -1,6 +1,6 @@
-use serde_json::{Value, Map};
-use serde::{Deserialize, Serialize};
-use crate::{base::Base, errors::DetaError};
+use serde_json::{ Value, Map };
+use serde::{ Deserialize, Serialize };
+use crate::{ base::Base, errors::DetaError };
 
 
 /// Represents a query operator.
@@ -77,7 +77,7 @@ impl Query {
 
     /// Executes the query until there are no more results.
     pub fn run_until_end(&self) -> Result<Value, DetaError> {
-        if !self.limit.is_none() {
+        if self.limit.is_some() {
             return Err(DetaError::PayloadError { msg: "limit must be None for run_until_end".to_string() });
         }
         let mut resp = self.run()?;
@@ -85,7 +85,7 @@ impl Query {
         loop {
             let mut tmp = resp["items"].as_array().unwrap().clone();
             result.items.append(&mut tmp);
-            if result.paging.last == "" {
+            if result.paging.last.is_empty() {
                 break;
             }
             resp = self.clone().last(&result.paging.last).run()?;
@@ -142,10 +142,10 @@ impl Serialize for Query {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
         let mut map = Map::new();
         map.insert("limit".to_string(), Value::from(self.limit.unwrap()));
-        if !self.last.is_none() {
+        if self.last.is_some() {
             map.insert("last".to_string(), Value::from(self.last.clone()));
         }
-        if !self.sort.is_none() && self.sort.unwrap() {
+        if self.sort.is_some() && self.sort.unwrap() {
             map.insert("sort".to_string(), serde_json::json!("desc"));
         }
         let mut tmp = self.container.clone();

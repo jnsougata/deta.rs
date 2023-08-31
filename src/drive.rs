@@ -1,7 +1,8 @@
-use crate::{errors::DetaError, query::Paging};
-use serde_json::{json, Value};
+use crate::{ errors::DetaError, query::Paging };
+
 use ureq::Response;
-use serde::{Serialize, Deserialize};
+use serde::{ Serialize, Deserialize };
+use serde_json::{ json, Value };
 
 
 const MAX_CHUNK_SIZE: usize = 10 * 1024 * 1024;
@@ -44,11 +45,7 @@ impl Drive {
             (None, Some(body)) => req.send_bytes(body),
             (None, None) => req.call(),
         };
-        if resp.is_err() {
-            return Err(DetaError::from(resp.err().unwrap()));
-        } else {
-            Ok(resp.unwrap().into_json().unwrap())
-        }
+        resp.unwrap().into_json().map_err(DetaError::from)
     }
 
     /// List files in drive.
@@ -76,7 +73,7 @@ impl Drive {
     pub fn list_all(&self, prefix: Option<&str>) -> Result<Value, DetaError> {
         let mut resp = self.list(prefix, None, None)?;
         let mut result = serde_json::from_value::<FileList>(resp.clone()).unwrap();
-        while result.paging.last != "" {
+        while !result.paging.last.is_empty() {
             resp = self.list(prefix, Some(1000), Some(result.paging.last.as_str()))?;
             let tmp = serde_json::from_value::<FileList>(resp.clone()).unwrap();
             result.paging = tmp.paging;
@@ -91,14 +88,10 @@ impl Drive {
         let path = format!("/files/download?name={}", name);
         let url = format!(
             "https://drive.deta.sh/v1/{}/{}{}", self.service.project_id, self.name, path);
-        let resp = ureq::get(&url)
+        ureq::get(&url)
             .set("X-API-Key", &self.service.project_key)
-            .call();
-        if resp.is_err() {
-            return Err(DetaError::from(resp.err().unwrap()));
-        } else {
-            Ok(resp.unwrap())
-        }
+            .call()
+            .map_err(DetaError::from)
     }
 
     /// Put a new file to drive.

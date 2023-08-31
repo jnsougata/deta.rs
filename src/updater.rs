@@ -1,7 +1,7 @@
-use serde_json::{Map, Value};
-use serde::{Serialize, Serializer};
+use serde_json::{ Map, Value };
+use serde::{ Serialize, Serializer };
 
-use crate::{base::Base, errors::DetaError};
+use crate::{ base::Base, errors::DetaError };
 
 /// Represents the operation to be performed on a field.
 #[derive(Debug, PartialEq)]
@@ -65,16 +65,15 @@ impl Serialize for Updater {
         where S: Serializer
     {
         let mut map = Map::new();
-
-        for &(ref field, ref value, ref operation) in &self.map {
-            let operation_vec = map.entry(operation.as_string())
+        for (field, value, operation) in self.map.iter() {
+            let op_vec = map.entry(operation.as_string())
                     .or_insert(Value::Array(Vec::new())).as_array_mut().unwrap();
             if operation == &Operation::Delete {
-                operation_vec.push(Value::String(field.clone()));
+                op_vec.push(Value::String(field.clone()));
             } else {
                 let mut inner_map = Map::new();
                 inner_map.insert(field.clone(), value.clone());
-                operation_vec.push(Value::Object(inner_map));
+                op_vec.push(Value::Object(inner_map));
             }
         }
         Value::Object(map).serialize(serializer)

@@ -1,11 +1,7 @@
-use crate::{
-    errors::DetaError, 
-    query::Query,
-    updater::Updater, 
-};
-use serde_json::{Value, Map, json};
-use serde::{Serialize, de::DeserializeOwned};
-use ureq;
+use crate::{ errors::DetaError, query::Query, updater::Updater };
+
+use serde::{ Serialize, de::DeserializeOwned };
+use serde_json::{ Value, Map, json };
 
 /// Represents a Deta Base.
 #[derive(Clone)]
@@ -30,11 +26,7 @@ impl Base {
             Some(body) => req.send_json(body),
             None => req.call()
         };
-        if resp.is_err() {
-            return Err(DetaError::from(resp.err().unwrap()));
-        } else {
-            Ok(resp.unwrap().into_json().unwrap())
-        }
+        resp.unwrap().into_json().map_err(DetaError::from)
     }
 
     /// fetch a record by key from the base. 
