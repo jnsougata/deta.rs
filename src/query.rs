@@ -3,33 +3,6 @@ use serde::{ Deserialize, Serialize };
 use crate::{ base::Base, errors::DetaError };
 
 
-/// Represents a query operator.
-#[derive(Debug, PartialEq)]
-pub enum Operator {
-    /// Equal to
-    Eq,
-    /// Not equal to
-    Ne,
-    /// Greater than
-    Gt,
-    /// Greater than or equal to
-    Gte,
-    /// Less than
-    Lt,
-    /// Less than or equal to
-    Lte,
-    /// In range
-    Range,
-    /// Contains
-    Contains
-}
-
-impl Operator {
-    fn as_string(&self) -> String {
-        format!("{:?}", self).to_lowercase()
-    }
-}
-
 #[derive(Deserialize, Serialize)]
 pub (crate) struct Paging {
     pub(crate) size: u16,
@@ -47,11 +20,8 @@ struct QueryResult {
 #[derive(Clone)]
 pub struct Query {
     base: Base,
-    /// The maximum number of items to return. Default maximum is 1000.
     limit: Option<u16>,
-    /// The last key returned in the previous query. Used for pagination.
     last: Option<String>,
-    /// Whether to sort the results in descending order. Default is false.
     sort: Option<bool>,
     container: Vec<Value>,
     map: Map<String, Value>
@@ -107,13 +77,13 @@ impl Query {
     }
 
     /// Sets whether to sort the results in descending order.
-    pub fn sort(mut self, sort: bool) -> Self {
-        self.sort = Some(sort);
+    pub fn sort(mut self, desc: bool) -> Self {
+        self.sort = Some(desc);
         self
     }
 
-    /// Adds a raw query operation to this query.
-    pub fn raw(mut self, value: Value) -> Self {
+    /// Adds a manually constructed query to the query.
+    pub fn from_value(mut self, value: Value) -> Self {
         self.container.push(value);
         self
     }
@@ -127,15 +97,54 @@ impl Query {
         self
     }
 
-    /// Adds a query operation to this query.
-    pub fn set(mut self, op: Operator, field: &str, value: Value) -> Self {
-        let f = match op {
-            Operator::Eq => field.to_string(),
-            _ => format!("{}?{}", field, op.as_string())
-        };
-        self.map.insert(f, value);
+    /// Checks equality of the given field with the given value.
+    pub fn equals(mut self, field: &str, value: Value) -> Self {
+        self.map.insert(field.to_string(), value);
         self
     }
+
+    /// Checks inequality of the given field with the given value.
+    pub fn not_equals(mut self, field: &str, value: Value) -> Self {
+        self.map.insert(format!("{}?ne", field), value);
+        self
+    }
+
+    /// Checks if the given field is greater than the given value.
+    pub fn greater_than(mut self, field: &str, value: Value) -> Self {
+        self.map.insert(format!("{}?gt", field), value);
+        self
+    }
+
+    /// Checks if the given field is greater than or equal to the given value.
+    pub fn greater_than_or_equals(mut self, field: &str, value: Value) -> Self {
+        self.map.insert(format!("{}?gte", field), value);
+        self
+    }
+
+    /// Checks if the given field is less than the given value.
+    pub fn less_than(mut self, field: &str, value: Value) -> Self {
+        self.map.insert(format!("{}?lt", field), value);
+        self
+    }
+
+    /// Checks if the given field is less than or equal to the given value.
+    pub fn less_than_or_equals(mut self, field: &str, value: Value) -> Self {
+        self.map.insert(format!("{}?lte", field), value);
+        self
+    }
+
+    /// Checks if the given field is in the given range.
+    pub fn in_range(mut self, field: &str, value: Value) -> Self {
+        self.map.insert(format!("{}?range", field), value);
+        self
+    }
+
+    /// Checks if the given field contains the given value.
+    pub fn contains(mut self, field: &str, value: Value) -> Self {
+        self.map.insert(format!("{}?contains", field), value);
+        self
+    }
+
 }
 
 impl Serialize for Query {

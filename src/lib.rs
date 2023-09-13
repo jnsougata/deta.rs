@@ -128,8 +128,7 @@ mod check {
     #[test]
     #[should_panic]
     fn sdk_base_insert() {
-        let deta = Deta::new();
-        let base = deta.base("hello");
+        let base =  Deta::new().base("hello");
         let user = User {
             key: "1234".to_string(),
             name: "John".to_string(),
@@ -143,32 +142,30 @@ mod check {
 
     #[test]
     fn sdk_base_query() {
-        use serde_json::{Value, Number};
-        use query::Operator;
-
-        let base = Deta::new().base("hello");
-        let resp = base.query()
+        use serde_json::{ Value, Number };
+        
+        let resp = Deta::new().base("hello")
+            .query()
             .limit(1)
             .sort(true)
-            .set(Operator::Eq, "name", Value::String("John".to_string()))
-            .set(Operator::Gt, "age", Value::Number(Number::from(18)))
-            .set(Operator::Lt, "age", Value::Number(Number::from(21)))
+            .equals("name", Value::String("John".to_string()))
+            .greater_than("age", Value::Number(Number::from(18)))
+            .less_than("age", Value::Number(Number::from(21)))
             .run();
-
+        
         assert!(resp.is_ok());
     }
 
     #[test]
     fn sdk_base_update() {
-        use serde_json::{Value, Number};
-        use updater::Operation;
+        use serde_json::{ Value, Number };
 
-        let base = Deta::new().base("hello");
-        let resp = base.update("1234")
-            .operation(Operation::Set, "name", Value::String("John".to_string()))
-            .operation(Operation::Increment, "age", Value::Number(Number::from(1)))
-            .run();
-        
+        let resp = Deta::new().base("hello")
+            .update("1234")
+            .set("name", Value::String("John".to_string()))
+            .increment("age", Value::Number(Number::from(1)))
+            .commit();
+
         assert!(resp.is_ok());
     }
 

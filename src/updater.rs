@@ -5,7 +5,7 @@ use crate::{ base::Base, errors::DetaError };
 
 /// Represents the operation to be performed on a field.
 #[derive(Debug, PartialEq)]
-pub enum Operation {
+pub (crate) enum Operation {
     /// Set the field to the given value.
     Set,
     /// Delete the field.
@@ -35,26 +35,56 @@ impl Operation {
 pub struct Updater {
     key: String,
     base: Base,
-    map: Vec<(String, Value, Operation)>
+    data: Vec<(String, Value, Operation)>
 }
 
 impl Updater {
+
     pub (crate) fn new(base: Base, key: &str) -> Updater {
         Updater {
             base,
             key: key.to_string(),
-            map: Vec::new()
+            data: Vec::new()
         }
     }
-    
-    /// Set a field to the given value with the operation to be performed.
-    pub fn operation(mut self, op: Operation, field: &str, value: Value) -> Self {
-        self.map.push((field.to_string(), value, op));
+
+    /// Set a field to the given value.
+    /// 
+    /// This will overwrite the existing value.
+    pub fn set(mut self, field: &str, value: Value) -> Self {
+        self.data.push((field.to_string(), value, Operation::Set));
         self
     }
 
-    /// Update a record by key in the base.
-    pub fn run(&self) -> Result<Value, DetaError> {
+    /// Delete a field.
+    /// 
+    /// This will delete the field from the record.
+    pub fn delete(mut self, field: &str) -> Self {
+        self.data.push((field.to_string(), Value::Null, Operation::Delete));
+        self
+    }
+
+     
+    /// Appends the given value to the field if the field is an array.
+    pub fn append(mut self, field: &str, value: Value) -> Self {
+        self.data.push((field.to_string(), value, Operation::Append));
+        self
+    }
+
+    /// Prepends the given value to the field if the field is an array.
+    pub fn prepend(mut self, field: &str, value: Value) -> Self {
+        self.data.push((field.to_string(), value, Operation::Prepend));
+        self
+    }
+
+    /// Increments the field by the given numeric value. Use negative values to decrement.
+    pub fn increment(mut self, field: &str, value: Value) -> Self {
+        self.data.push((field.to_string(), value, Operation::Increment));
+        self
+    }
+
+    /// Commits the updates to the record.
+    pub fn commit(&self) -> Result<Value, DetaError> {
         self.base.request("PATCH", &format!("/items/{}", self.key), Some(serde_json::to_value(self).unwrap()))
     }
 
@@ -65,7 +95,7 @@ impl Serialize for Updater {
         where S: Serializer
     {
         let mut map = Map::new();
-        for (field, value, operation) in self.map.iter() {
+        for (field, value, operation) in self.data.iter() {
             let op_vec = map.entry(operation.as_string())
                     .or_insert(Value::Array(Vec::new())).as_array_mut().unwrap();
             if operation == &Operation::Delete {

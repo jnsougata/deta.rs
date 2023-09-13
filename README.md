@@ -76,18 +76,18 @@ fn main() {
 
     // Update a record
     _ = base.update("user_1")
-        .operation(Operation::Set, "name", Value::String("Johnny".to_string()))
-        .operation(Operation::Increment, "age", Value::Number(Number::from(1)))
-        .run()
+        .set("name", Value::String("Johnny".to_string()))
+        .increment("age", Value::Number(Number::from(1)))
+        .commit()
         .unwrap();
 
     // Query records
     let resp = base.query()
         .limit(1)
         .sort(true)
-        .set(Operator::Eq, "name", Value::String("Johnny".to_string()))
-        .set(Operator::Gt, "age", Value::Number(Number::from(20)))
-        .set(Operator::Lt, "age", Value::Number(Number::from(23)))
+        .equals(Operator::Eq, "name", Value::String("Johnny".to_string()))
+        .greater_than("age", Value::Number(Number::from(20)))
+        .less_than("age", Value::Number(Number::from(23)))
         .run()
         .unwrap();
     println!("{:?}", resp);
