@@ -10,7 +10,7 @@ cargo add detalib
 
 ```toml
 [dependencies]
-detalib = "0.1.3"
+detalib = "0.1.4"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 ```
