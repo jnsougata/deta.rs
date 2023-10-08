@@ -97,18 +97,20 @@ impl Serialize for Updater {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where S: Serializer
     {
-        let mut map = Map::new();
+        let mut main_map = Map::new();
+        let mut del_vec = vec![];
         for (field, value, operation) in self.data.iter() {
-            let op_vec = map.entry(operation.as_string())
-                    .or_insert(Value::Array(Vec::new())).as_array_mut().unwrap();
             if operation == &Operation::Delete {
-                op_vec.push(Value::String(field.clone()));
+                del_vec.push(value.clone())
             } else {
-                let mut inner_map = Map::new();
-                inner_map.insert(field.clone(), value.clone());
-                op_vec.push(Value::Object(inner_map));
+                let tmp = main_map.entry(operation.as_string())
+                    .or_insert(Value::Object(Map::new()));
+                tmp.as_object_mut().unwrap().insert(field.clone().to_string(), value.clone());
             }
         }
-        Value::Object(map).serialize(serializer)
+        if !del_vec.is_empty() {
+            main_map.insert(String::from("delete"), Value::Array(del_vec));
+        }
+        Value::Object(main_map).serialize(serializer)
     }
 }

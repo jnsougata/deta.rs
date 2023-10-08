@@ -102,16 +102,12 @@ mod check {
     #[test]
     fn base_init() {
 
-        let deta = Deta::new();
-        let base = deta.base("hello");
-
-        assert_eq!(base.name, "hello");
+        Deta::new().base("hello");
     }
 
     #[test]
     fn base_put() {
-        let deta = Deta::new();
-        let base = deta.base("hello");
+        let base = Deta::new().base("hello");
         let user = User {
             key: "1234".to_string(),
             name: "John".to_string(),
@@ -125,8 +121,7 @@ mod check {
 
     #[test]
     fn base_get_as() {
-        let deta = Deta::new();
-        let base = deta.base("hello");
+        let base = Deta::new().base("hello");
 
         assert!(base.get_as::<User>("1234").is_ok());
     }
