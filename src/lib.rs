@@ -88,9 +88,8 @@ impl Deta {
 
 #[cfg(test)]
 mod check {
-    use serde;
-    use super::*;
 
+    use super::*;
 
     #[derive(serde::Deserialize, Debug, serde::Serialize)]
     pub struct User {
@@ -101,7 +100,7 @@ mod check {
     }
 
     #[test]
-    fn sdk_test() {
+    fn base_init() {
 
         let deta = Deta::new();
         let base = deta.base("hello");
@@ -110,7 +109,22 @@ mod check {
     }
 
     #[test]
-    fn sdk_base_get() {
+    fn base_put() {
+        let deta = Deta::new();
+        let base = deta.base("hello");
+        let user = User {
+            key: "1234".to_string(),
+            name: "John".to_string(),
+            age: 20,
+            address: "123 Main St".to_string(),
+        };
+        let resp = base.put(vec![user]);
+
+        assert!(resp.is_ok())
+    }
+
+    #[test]
+    fn base_get() {
         let deta = Deta::new();
         let base = deta.base("hello");
         let user = User {
@@ -127,7 +141,7 @@ mod check {
 
     #[test]
     #[should_panic]
-    fn sdk_base_insert() {
+    fn base_insert() {
         let base =  Deta::new().base("hello");
         let user = User {
             key: "1234".to_string(),
@@ -135,13 +149,13 @@ mod check {
             age: 20,
             address: "123 Main St".to_string(),
         };
-        let resp = base.insert(&user);
+        let resp = base.insert(user);
 
         assert!(resp.is_ok());
     }
 
     #[test]
-    fn sdk_base_query() {
+    fn base_query() {
         use serde_json::{ Value, Number };
         
         let resp = Deta::new().base("hello")
@@ -157,7 +171,7 @@ mod check {
     }
 
     #[test]
-    fn sdk_base_update() {
+    fn base_update() {
         use serde_json::{ Value, Number };
 
         let resp = Deta::new().base("hello")
