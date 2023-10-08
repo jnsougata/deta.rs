@@ -6,6 +6,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  DETA_PROJECT_KEY: ${{ secrets.DETA_PROJECT_KEY }}
+  CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
 
 jobs:
   build:
@@ -18,5 +20,5 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
-    - name: Dry Run
-      run: cargo publish --dry-run
+    - name: Publish
+      run: cargo publish --token $CRATES_IO_TOKEN

@@ -83,7 +83,7 @@ impl Query {
     }
 
     /// Adds a manually constructed query to the query.
-    pub fn from_value(mut self, value: Value) -> Self {
+    pub fn append(mut self, value: Value) -> Self {
         self.container.push(value);
         self
     }

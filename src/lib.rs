@@ -64,7 +64,7 @@ impl Deta {
     /// let base = deta.base("hello");
     /// ```
     pub fn base(&self, name: &str) -> Base {
-        base::Base {
+        Base {
             name: name.to_string(),
             service: self.clone(),
         }
@@ -78,7 +78,7 @@ impl Deta {
     /// let drive = deta.drive("world");
     /// ```
     pub fn drive(&self, name: &str) -> Drive {
-        drive::Drive {
+        Drive {
             name: name.to_string(),
             service: self.clone(),
         }

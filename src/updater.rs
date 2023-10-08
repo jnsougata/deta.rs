@@ -85,7 +85,10 @@ impl Updater {
 
     /// Commits the updates to the record.
     pub fn commit(&self) -> Result<Value, DetaError> {
-        self.base.request("PATCH", &format!("/items/{}", self.key), Some(serde_json::to_value(self).unwrap()))
+        self.base.request(
+            "PATCH", &format!("/items/{}", self.key),
+            Some(serde_json::to_value(self).unwrap())
+        )
     }
 
 }

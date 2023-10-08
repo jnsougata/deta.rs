@@ -50,7 +50,11 @@ impl Base {
     /// Overwrites existing records with the same key.
     pub fn put<T>(&self, records: Vec<T>) -> Result<Value, DetaError> where T: Serialize {
         if records.len() > 25 {
-            return Err(DetaError::PayloadError { msg: "maximum 25 records can be put at a time".to_string() });
+            return Err(
+                DetaError::PayloadError {
+                    msg: "maximum 25 records can be put at a time".to_string()
+                }
+            );
         }
         let mut payload = Map::new();
         let mut items = Vec::new();
