@@ -6,15 +6,6 @@ Rust bindings for the Deta **Base** and **Drive** [HTTP API](https://deta.space/
 cargo add detalib
 ```
 
-#### Cargo.toml
-
-```toml
-[dependencies]
-detalib = "0.1.4"
-serde_json = "1.0"
-serde = { version = "1.0", features = ["derive"] }
-```
-
 ## Quickstart
 
 ```rust
