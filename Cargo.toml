@@ -1,6 +1,6 @@
 [package]
 name = "detalib"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 authors = ["Sougata Jana"]
 description = "Rust bindings for the Deta Base and Drive HTTP API"
