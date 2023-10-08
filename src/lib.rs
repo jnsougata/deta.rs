@@ -124,19 +124,11 @@ mod check {
     }
 
     #[test]
-    fn base_get() {
+    fn base_get_as() {
         let deta = Deta::new();
         let base = deta.base("hello");
-        let user = User {
-            key: "1234".to_string(),
-            name: "John".to_string(),
-            age: 20,
-            address: "123 Main St".to_string(),
-        };
-        _ = base.insert(&user);
-        let deserialized = base.get_as::<User>(user.key.as_str());
 
-        assert!(deserialized.is_ok());
+        assert!(base.get_as::<User>("1234").is_ok());
     }
 
     #[test]
