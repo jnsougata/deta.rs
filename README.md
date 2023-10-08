@@ -85,7 +85,7 @@ fn main() {
     let resp = base.query()
         .limit(1)
         .sort(true)
-        .equals(Operator::Eq, "name", Value::String("Johnny".to_string()))
+        .equals("name", Value::String("Johnny".to_string()))
         .greater_than("age", Value::Number(Number::from(20)))
         .less_than("age", Value::Number(Number::from(23)))
         .run()
