@@ -1,6 +1,6 @@
 [package]
 name = "detalib"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 authors = ["Sougata Jana"]
 description = "Rust bindings for the Deta Base and Drive HTTP API"
@@ -16,3 +16,4 @@ serde = { version = "1.0.188", features = ["derive"] }
 chrono = "0.4.19"
 ureq = { version = "2.7.1", features = ["rustls", "json"] }
 thiserror = "1.0.47"
+urlencoding = "2.1.3"

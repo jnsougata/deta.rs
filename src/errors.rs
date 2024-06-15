@@ -12,8 +12,8 @@ pub enum DetaError {
     Conflict,
     #[error("413 payload too large")]
     PayloadTooLarge,
-    #[error("HTTP error: {status_code} {msg}")]
-    HTTPError { status_code: u16, msg: String },
+    #[error("HTTP error: {status} {msg}")]
+    HTTPError { status: u16, msg: String },
     #[error("transport error")]
     TransportError,
     #[error("Custom error: {msg}")]
@@ -32,12 +32,11 @@ impl From<ureq::Error> for DetaError {
             ureq::Error::Status(404, _) => DetaError::NotFound,
             ureq::Error::Status(409, _) => DetaError::Conflict,
             ureq::Error::Status(413, _) => DetaError::PayloadTooLarge,
-            ureq::Error::Status(status_code, res) => DetaError::HTTPError {
-                status_code,
+            ureq::Error::Status(status, res) => DetaError::HTTPError {
+                status,
                 msg: res.status_text().to_string(),
             },
             ureq::Error::Transport(_) => DetaError::TransportError,
-
         }
     }
 }

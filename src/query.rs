@@ -46,22 +46,29 @@ impl Query {
     }
 
     /// Executes the query until there are no more results.
-    pub fn run_until_end(&self) -> Result<Value, DetaError> {
-        if self.limit.is_some() {
-            return Err(DetaError::PayloadError { msg: "limit must be None for run_until_end".to_string() });
+    pub fn walk(&self) -> Result<Vec<Value>, DetaError> {
+        let mut items: Vec<Value> = Vec::new();
+        let mut resp = self.run();
+        if resp.is_err() {
+            return Err(resp.err().unwrap());
         }
-        let mut resp = self.run()?;
-        let mut result = serde_json::from_value::<QueryResult>(resp.clone()).unwrap();
-        loop {
-            let mut tmp = resp["items"].as_array().unwrap().clone();
-            result.items.append(&mut tmp);
-            if result.paging.last.is_empty() {
+        let result = serde_json::from_value::<QueryResult>
+            (resp.unwrap()).map_err(DetaError::from).unwrap();
+        items.extend(result.items);
+        let mut last = result.paging.last;
+        while !last.is_empty() {
+            let mut query = self.clone();
+            query = query.last(&last);
+            resp = query.run();
+            if resp.is_err() {
                 break;
             }
-            resp = self.clone().last(&result.paging.last).run()?;
+            let result = serde_json::from_value::<QueryResult>
+                (resp.unwrap()).map_err(DetaError::from).unwrap();
+            last = result.paging.last;
+            items.extend(result.items);
         }
-        result.paging.size = result.items.len() as u16;
-        Ok(serde_json::to_value(result).unwrap())
+        Ok(items)
     }
 
     /// Sets the limit of the query.
@@ -157,9 +164,9 @@ impl Serialize for Query {
         if self.sort.is_some() && self.sort.unwrap() {
             map.insert("sort".to_string(), serde_json::json!("desc"));
         }
-        let mut tmp = self.container.clone();
-        tmp.push(Value::Object(self.map.clone()));
-        map.insert("query".to_string(), Value::Array(tmp));
+        let mut outer = self.container.clone();
+        outer.push(Value::Object(self.map.clone()));
+        map.insert(String::from("query"), Value::Array(outer));
         Value::Object(map).serialize(serializer)
     }
 }

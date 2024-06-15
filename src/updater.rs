@@ -26,7 +26,7 @@ impl Operation {
 
 /// Represents an updater to update a field in a record.
 /// 
-/// For delete operations, the value is ignored so it can be anything.
+/// For delete operations, the value is ignored, so it can be anything.
 /// For all other operations, the value is used.
 /// 
 /// A single updater can contain multiple updates.

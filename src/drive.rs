@@ -1,16 +1,32 @@
-use crate::{ errors::DetaError, query::Paging };
+use crate::{errors::DetaError, query::Paging };
 
 use ureq::Response;
 use serde::{ Serialize, Deserialize };
+use serde::de::DeserializeOwned;
 use serde_json::{ json, Value };
 
 
 const MAX_CHUNK_SIZE: usize = 10 * 1024 * 1024;
 
 #[derive(Deserialize, Serialize)]
-struct FileList {
-    paging: Paging,
-    names: Vec<String>
+pub struct FileList {
+    pub(crate) paging: Option<Paging>,
+    pub(crate) names: Vec<String>
+}
+
+#[derive(Deserialize, Serialize)]
+struct Metadata {
+    name: String,
+    upload_id: String,
+    project_id: String,
+    drive_name: String
+}
+
+
+fn de<T: DeserializeOwned>(r: Result<Response, DetaError>) -> Result<T, DetaError> {
+    r.map_err(DetaError::from).and_then(|r| {
+        r.into_json::<T>().map_err(DetaError::from)
+    })
 }
 
 /// Represents a Deta Drive.
@@ -22,30 +38,32 @@ pub struct Drive {
 impl Drive {
 
     fn request(
-        &self, 
-        method: &str, 
-        path: &str, 
+        &self,
+        method: &str,
+        path: &str,
         json: Option<Value>,
-        content: Option<&[u8]>,
+        body: Option<&[u8]>,
         content_type: Option<&str>
-    ) -> Result<Value, DetaError> {
-        let url = format!(
-            "https://drive.deta.sh/v1/{}/{}{}", self.service.project_id, self.name, path);
-        let mut req = ureq::request(method, &url)
+    ) -> Result<Response, DetaError> {
+        let mut req = ureq::request(method, &format!(
+            "https://drive.deta.sh/v1/{}/{}{}", self.service.project_id, self.name, path))
             .set("X-API-Key", &self.service.project_key);
-        match content_type {
-            Some(content_type) => req = req.set("Content-Type", content_type),
-            None => req = req.set("Content-Type", "application/json")
-        }
-        let resp = match (json, content) {
-            (Some(_), Some(_)) => return Err(
-                DetaError::PayloadError { msg: "json and content can not be both Some".to_string() }
+        match (json, body) {
+            (Some(_), Some(_)) => Err(
+                DetaError::PayloadError { msg: String::from("body and json are mutually exclusive.") }
             ),
-            (Some(body), None) => req.send_json(body),
-            (None, Some(body)) => req.send_bytes(body),
-            (None, None) => req.call(),
-        };
-        resp.unwrap().into_json().map_err(DetaError::from)
+            (Some(o), None) => {
+                req = req.set("Content-Type", "application/json");
+                req.send_json(o).map_err(DetaError::from)
+            },
+            (None, Some(b)) => {
+                if content_type.is_some() {
+                    req = req.set("Content-Type", content_type.unwrap());
+                }
+                req.send_bytes(b).map_err(DetaError::from)
+            },
+            (None, None) => req.call().map_err(DetaError::from),
+        }
     }
 
     /// List files in drive.
@@ -54,7 +72,7 @@ impl Drive {
         prefix: Option<&str>,
         limit: Option<i32>,
         last: Option<&str>,
-    ) -> Result<Value, DetaError> {
+    ) -> Result<FileList, DetaError> {
         let mut path = String::from("/files?");
         if let Some(limit) = limit {
             path.push_str(&format!("limit={}", limit));
@@ -67,20 +85,32 @@ impl Drive {
         if let Some(last) = last {
             path.push_str(&format!("&last={}", last));
         }
-        self.request("GET", &path, None, None, None)
+        de::<FileList>(self.request("GET", &path, None, None, None))
     }
 
-    pub fn list_all(&self, prefix: Option<&str>) -> Result<Value, DetaError> {
-        let mut resp = self.list(prefix, None, None)?;
-        let mut result = serde_json::from_value::<FileList>(resp.clone()).unwrap();
-        while !result.paging.last.is_empty() {
-            resp = self.list(prefix, Some(1000), Some(result.paging.last.as_str()))?;
-            let tmp = serde_json::from_value::<FileList>(resp.clone()).unwrap();
-            result.paging = tmp.paging;
-            result.names.append(&mut tmp.names.clone());
+    /// Walk through all files in drive and returns a list of file names.
+    pub fn walk(&self, prefix: Option<&str>) -> Vec<String> {
+        let mut files: Vec<String> = vec![];
+        let mut res = self.list(prefix, None, None);
+        if res.is_err() {
+            return files;
         }
-        result.paging.size = result.names.len() as u16;
-        Ok(serde_json::to_value(result).unwrap())
+        let mut list = res.unwrap();
+        files.append(&mut list.names);
+        if list.paging.is_none() {
+            return files;
+        }
+        let mut last = list.paging.unwrap().last;
+        while !last.is_empty() {
+            res = self.list(prefix, Some(1000), Some(&last));
+            if res.is_err() {
+                return files;
+            }
+            list = res.unwrap();
+            files.append(&mut list.names);
+            last = list.paging.unwrap().last
+        }
+        files
     }
 
     /// Get a file from drive.
@@ -97,44 +127,38 @@ impl Drive {
     /// Put a new file to drive.
     pub fn put(
         &self, save_as: &str, content: &[u8], content_type: Option<&str>
-    ) -> Result<Value, DetaError> {
+    ) -> Result<Response, DetaError> {
+        let encoded = &urlencoding::encode(save_as).into_owned();
         if content.len() <= MAX_CHUNK_SIZE {
-            self.request(
+            return self.request(
                 "POST",
-                &format!("/files?name={}", save_as),
+                &format!("/files?name={}", encoded),
                 None,
                 Some(content),
                 content_type
-            )
-        } else {
-            let chunks = content.chunks(MAX_CHUNK_SIZE);
-            let init = self.request(
-                "POST",
-                &format!("/uploads?name={}", save_as),
-                None,
-                None,
-                None
-            )?;
-            let upload_id = init["upload_id"].to_string().replace('\"', "");
-            let mut done: Vec<Result<Value, DetaError> > = vec![];
-            for (i, chunk) in chunks.enumerate() {
-                let path = format!("/uploads/{}/parts?name={}&part={}", upload_id, save_as, i+1);
-                done.push(self.request("POST", &path, None, Some(chunk), content_type)
-                )
-            }
-            let success = done.iter().all(|x| x.is_err());
-            let path = format!("/uploads/{}?name={}", upload_id, save_as);
-            if success {
-                self.request("PATCH", &path, None, None, None)
-            } else {
-                self.request("DELETE", &path, None, None, None)
+            );
+        }
+        let res = de::<Metadata>(
+            self.request(
+                "POST", &format!("/uploads?name={}", encoded), None, None, None));
+        if res.is_err() {
+            return Err(res.err().unwrap());
+        }
+        let meta = res.unwrap();
+        for (i, chunk) in content.chunks(MAX_CHUNK_SIZE).enumerate() {
+            let path = &format!("/uploads/{}/parts?name={}&part={}", meta.upload_id, encoded, i+1);
+            let resp = self.request(
+                "POST", path, None, Some(chunk), content_type);
+            if resp.is_err() {
+                _ = self.request("DELETE", path, None, None, None);
+                return Err(resp.err().unwrap());
             }
         }
+        self.request("PATCH", &format!("/uploads?name={}", encoded), None, None, None)
     }
 
     /// Delete multiple files from drive.
-    pub fn delete(&self, names: Vec<&str>) -> Result<Value, DetaError> {
+    pub fn delete(&self, names: Vec<&str>) -> Result<Response, DetaError> {
         self.request("DELETE", "/files", Some(json!({ "names": names })), None, None)
     }
-
 }

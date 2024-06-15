@@ -2,20 +2,22 @@
 //! This is the unofficial Rust SDK for Deta Base and Drive.
 
 
+use base::Base;
+use drive::Drive;
+
 mod base;
 mod drive;
 pub mod query;
 pub mod errors;
 pub mod updater;
 
-use base::Base;
-use drive::Drive;
-
-
-fn validate(key: &str) -> String {
-    let d = key.split('_').collect::<Vec<&str>>();
-    assert_eq!(d.len(), 2, "invalid project key");
-    d[0].to_string()
+fn validate(key: &str) -> Option<&str> {
+    let splits = key.split('_').collect::<Vec<&str>>();
+    if splits.len() != 2 {
+        None
+    } else {
+        Some(splits[0])
+    }
 }
 
 #[derive(Clone)]
@@ -34,8 +36,12 @@ impl Deta {
     /// let base = deta.base("hello");
     /// ```
     pub fn from(project_key: &str) -> Deta {
+        let v = validate(project_key);
+        if v.is_none() {
+            panic!("Invalid project key, must be in the format `projectId_secret`.");
+        }
         Deta{
-            project_id: validate(project_key),
+            project_id: v.unwrap().to_string(),
             project_key: project_key.to_string(),
         }
     }
@@ -48,11 +54,15 @@ impl Deta {
     /// let base = deta.base("world");
     /// ```
     pub fn new() -> Deta {
-        let var = std::env::var("DETA_PROJECT_KEY").expect("DETA_PROJECT_KEY not found");
-
+        let env_var = std::env::var("DETA_PROJECT_KEY")
+            .expect("Environment variable `DETA_PROJECT_KEY` is not set.");
+        let v = validate(&env_var);
+        if v.is_none() {
+            panic!("Invalid project key, must be in the format `projectId_secret`.");
+        }
         Deta {
-            project_id: validate(&var),
-            project_key: var,
+            project_id: v.unwrap().to_string(),
+            project_key: env_var,
         }
     }
 
@@ -87,7 +97,8 @@ impl Deta {
 
 
 #[cfg(test)]
-mod check {
+mod run_tests {
+    use serde_json::json;
 
     use super::*;
 
@@ -100,74 +111,38 @@ mod check {
     }
 
     #[test]
-    fn base_init() {
-
-        Deta::new().base("hello");
-    }
-
-    #[test]
-    fn base_put() {
-        let base = Deta::new().base("hello");
-        let user = User {
-            key: "1234".to_string(),
-            name: "John".to_string(),
+    fn base() {
+        let db = Deta::new().base("hello");
+        let user: &User = &User {
+            key: String::from("db8213bc"),
+            name: String::from("John Doe"),
             age: 20,
-            address: "123 Main St".to_string(),
+            address: String::from("123 Broadway")
         };
-        let resp = base.put(vec![user]);
-
-        assert!(resp.is_ok())
-    }
-
-    #[test]
-    fn base_get_as() {
-        let base = Deta::new().base("hello");
-
-        assert!(base.get_as::<User>("1234").is_ok());
-    }
-
-    #[test]
-    #[should_panic]
-    fn base_insert() {
-        let base =  Deta::new().base("hello");
-        let user = User {
-            key: "1234".to_string(),
-            name: "John".to_string(),
-            age: 20,
-            address: "123 Main St".to_string(),
-        };
-        let resp = base.insert(user);
-
-        assert!(resp.is_ok());
-    }
-
-    #[test]
-    fn base_query() {
-        use serde_json::{ Value, Number };
-        
-        let resp = Deta::new().base("hello")
-            .query()
-            .limit(1)
+        assert!(db.put(vec![user]).unwrap().to_string().contains("db8213bc"));
+        assert_eq!(db.get_as::<User>("db8213bc").unwrap().name, user.name);
+        assert!(db.insert(user).is_err_and(|e| e.to_string().contains("409")));
+        assert!(!db.query()
             .sort(true)
-            .equals("name", Value::String("John".to_string()))
-            .greater_than("age", Value::Number(Number::from(18)))
-            .less_than("age", Value::Number(Number::from(21)))
-            .run();
-        
-        assert!(resp.is_ok());
+            .contains("name", json!("John"))
+            .greater_than("age", json!(18))
+            .walk().unwrap().is_empty()
+        );
+        assert!(db.update("db8213bc")
+            .set("name", json!("John"))
+            .increment("age", json!(24))
+            .commit().unwrap().to_string().contains("db8213bc")
+        );
+        assert!(db.delete("db8213bc").is_ok());
     }
 
     #[test]
-    fn base_update() {
-        use serde_json::{ Value, Number };
-
-        let resp = Deta::new().base("hello")
-            .update("1234")
-            .set("name", Value::String("John".to_string()))
-            .increment("age", Value::Number(Number::from(1)))
-            .commit();
-
-        assert!(resp.is_ok());
+    fn drive() {
+        let db = Deta::new().drive("world");
+        assert!(db.put("test.txt", b"Hello, World!", None).is_ok());
+        assert!(!db.list(None, None, None).unwrap().names.is_empty());
+        assert!(!db.walk(None).is_empty());
+        assert!(db.get("test.txt").is_ok());
+        assert!(db.delete(vec!["test.txt"]).is_ok());
     }
-
 }

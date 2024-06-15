@@ -131,4 +131,4 @@ Methods
 - [X] `get` (single)
 - [X] `delete` (single)
 - [X] `list` (paginated)
-- [X] `list_all`
+- [X] `walk` (multiple)
